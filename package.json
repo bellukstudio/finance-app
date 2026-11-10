@@ -1,0 +1,35 @@
+{
+  "name": "family-finance",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "types": "supabase gen types typescript --linked > src/types/database.ts",
+    "test": "node --experimental-strip-types --test tests/unit/*.test.ts"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@supabase/ssr": "^0.5.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "zod": "^4.6.7",
+    "server-only": "^0.0.1",
+    "recharts": "^2.12.0",
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.15.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "supabase": "^3.1.0",
+    "@types/pdfkit": "^0.13.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.23",
+    "uuid": "^11.1.1"
+  }
+}

@@ -1,0 +1,31 @@
+name: backup
+on:
+  schedule: [{ cron: "0 19 * * *" }]   # 02:00 WIB
+  workflow_dispatch: {}
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Install pg_dump 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update && sudo apt-get install -y postgresql-client-17
+      - name: Dump database (schema public + auth profil via full dump)
+        env: { DB_URL: "${{ secrets.SUPABASE_DB_URL }}" }
+        run: pg_dump "$DB_URL" --no-owner --no-privileges -Fc -f db.dump
+      - name: Backup storage
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm i --no-save @supabase/supabase-js && node scripts/backup-storage.mjs && tar czf storage.tgz storage-backup
+      - name: Encrypt
+        env: { P: "${{ secrets.BACKUP_PASSPHRASE }}" }
+        run: |
+          for f in db.dump storage.tgz; do gpg --batch --yes --pinentry-mode loopback --passphrase "$P" -c "$f"; done
+      - uses: actions/upload-artifact@v4
+        with: { name: "backup-${{ github.run_id }}", path: "*.gpg", retention-days: 14 }
