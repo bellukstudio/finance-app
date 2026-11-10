@@ -64,3 +64,20 @@ th { color: var(--muted); font-weight: 600; font-size: .85rem; }
 .login-card { width: 100%; max-width: 380px; text-align: center; }
 .login-card p { color: var(--muted); margin: 0 0 1.5rem; }
 .login-card button { width: 100%; }
+
+/* ===== Perbaikan responsif modal (Catat Transaksi & Budget) ===== */
+.mb{grid-template-columns:minmax(0,1fr);overflow-x:hidden;overscroll-behavior:contain}
+.modal{min-width:0;width:100%;overflow-x:hidden}
+.modal *{min-width:0}
+.modal .body{padding:16px 20px calc(20px + env(safe-area-inset-bottom))}
+.fld input,.fld select,.alloc select,.mp-box{max-width:100%;width:100%}
+.fld input[type=date]{-webkit-appearance:none;appearance:none;min-height:42px}
+.tabs3 button{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:860px){
+.mb{align-items:end;justify-items:stretch}
+.modal{max-width:100%;max-height:94dvh;border-radius:16px 16px 0 0;border-bottom:0}
+.modal>header{padding:14px 16px}.modal .body{padding:14px 16px calc(18px + env(safe-area-inset-bottom));gap:12px}
+.fld input,.fld select,.mp-box input{font-size:16px}  /* cegah zoom otomatis di iOS */
+.save{position:sticky;bottom:0;z-index:1;box-shadow:0 -10px 14px -6px var(--surface)}
+}
+@media(max-width:400px){.tabs3 button{font-size:.76rem;padding:.45rem .1rem;gap:3px}.tabs3 button .ico{width:12px;height:12px}.two{grid-template-columns:1fr}}

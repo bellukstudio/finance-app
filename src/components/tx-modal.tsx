@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { saveTx } from "@/app/(app)/actions";
 import { Icon } from "./icons";
 
@@ -9,6 +9,8 @@ export type BudgetOpt = Opt & { start: string; end: string };
 type Kind = "income" | "expense" | "transfer";
 const TABS: { k: Kind; label: string; icon: "down" | "up" | "swap"; c: string }[] = [
   { k: "income", label: "Pemasukan", icon: "down", c: "var(--income)" }, { k: "expense", label: "Pengeluaran", icon: "up", c: "var(--expense)" }, { k: "transfer", label: "Transfer", icon: "swap", c: "var(--transfer)" }];
+const MAX_FILE = 4_000_000, OK_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const kb = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} KB`);
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 
 export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; cats: CatOpt[]; budgets: BudgetOpt[]; onClose: () => void }) {
@@ -17,6 +19,14 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
   const [cat, setCat] = useState(""), [budget, setBudget] = useState(""), [note, setNote] = useState("");
   const [err, setErr] = useState<string | null>(null), [pending, start] = useTransition();
   const [idem] = useState(() => crypto.randomUUID());
+  const [file, setFile] = useState<File | null>(null), [thumb, setThumb] = useState<string | null>(null), [saved, setSaved] = useState(false), fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (!file || !file.type.startsWith("image/")) { setThumb(null); return; } const u = URL.createObjectURL(file); setThumb(u); return () => URL.revokeObjectURL(u); }, [file]);
+  function pick(f: File | undefined) {
+    if (!f) return;
+    if (!OK_TYPES.includes(f.type)) return setErr("Tipe file tidak didukung (JPEG, PNG, WebP, PDF).");
+    if (f.size > MAX_FILE) return setErr("Ukuran file maksimal 4 MB.");
+    setErr(null); setFile(f);
+  }
   const list = useMemo(() => cats.filter((c) => c.type === kind), [cats, kind]);
   const bl = useMemo(() => budgets.filter((b) => date >= b.start && date <= b.end), [budgets, date]);
   useEffect(() => { setCat(list[0]?.id ?? ""); }, [list]);
@@ -31,7 +41,17 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
     start(async () => {
       const base = { date, amount: Number(amount), wallet_id: wallet, note, budget_id: budget || null, idem };
       const r = await saveTx(kind === "transfer" ? { ...base, type: "transfer", to_wallet_id: to } : { ...base, type: kind, category_id: cat });
-      if (r.ok) onClose(); else setErr(r.error);
+      if (!r.ok) return setErr(r.error);
+      if (!file || !r.id) return onClose();
+      // Transaksi sudah tersimpan; nota diunggah setelahnya.
+      try {
+        const fd = new FormData(); fd.set("transaction_id", r.id); fd.set("file", file);
+        const res = await fetch("/api/attachments", { method: "POST", body: fd, headers: { "x-json": "1" } });
+        const j = await res.json().catch(() => null) as { ok?: boolean; message?: string } | null;
+        if (res.ok && j?.ok) return onClose();
+        setErr(`Transaksi tersimpan, tetapi nota gagal diunggah: ${j?.message ?? "kesalahan jaringan"}. Anda bisa mengunggahnya lagi dari daftar transaksi.`);
+      } catch { setErr("Transaksi tersimpan, tetapi nota gagal diunggah (kesalahan jaringan). Anda bisa mengunggahnya lagi dari daftar transaksi."); }
+      setSaved(true);
     });
   }
   return (
@@ -62,8 +82,20 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
             </div>
           )}
           <label className="fld"><span>Catatan</span><input value={note} maxLength={200} placeholder="Opsional…" onChange={(e) => setNote(e.target.value)} /></label>
+          <div className="fld"><span>Nota (opsional)</span>
+            <input ref={fileRef} type="file" hidden accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+            {file ? (
+              <div className="nota">
+                {thumb ? <img src={thumb} alt="Pratinjau nota" /> : <span className="nota-ico"><Icon n="list" /></span>}
+                <span className="nota-t"><b>{file.name}</b><small className="muted">{kb(file.size)}</small></span>
+                <button type="button" className="ib del" aria-label="Hapus nota" disabled={pending || saved} onClick={() => setFile(null)}><Icon n="trash" /></button>
+              </div>
+            ) : <button type="button" className="ghost upl" onClick={() => fileRef.current?.click()}><Icon n="plus" /> Pilih foto atau PDF nota</button>}
+            <small className="muted">JPEG, PNG, WebP, atau PDF. Maksimal 4 MB.</small>
+          </div>
           {err && <p className="err" role="alert">{err}</p>}
-          <button className="save" disabled={pending || !amount}><Icon n="save" /> {pending ? "Menyimpan…" : "Simpan"}</button>
+          {saved ? <button type="button" className="save" onClick={onClose}>Selesai</button>
+            : <button className="save" disabled={pending || !amount}><Icon n="save" /> {pending ? (file ? "Menyimpan & mengunggah…" : "Menyimpan…") : "Simpan"}</button>}
         </div>
       </form>
     </div>

@@ -16,7 +16,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ h
   const group = (rows: Record<string, string>[] | null, key: "wallet_id" | "category_id") => { const m = new Map<string, string[]>(); (rows ?? []).forEach((r) => { const b = r.budget_id, v = r[key]; if (b && v) m.set(b, [...(m.get(b) ?? []), v]); }); return m; };
   const wm = group(bw, "wallet_id"), cm = group(bc, "category_id");
   const list: BudgetView[] = (bs ?? []).filter((b) => (history ? b.end_date < today : b.end_date >= today)).map((b) => {
-    const x = u.get(b.id), start = b.start_date, y = Number(start.slice(0, 4)), m = Number(start.slice(5, 7));
+    const x = u.get(b.id), start = b.start_date, [y, m] = start.split("-").map(Number);
     return { id: b.id, name: b.name || (b.category_id && cn.get(b.category_id)) || (b.wallet_id && wn.get(b.wallet_id)) || "Budget", amount: Number(b.amount), used: Number(x?.used ?? 0), topup: Number(x?.topup ?? 0), start, end: b.end_date, month: m, year: y,
       wallet_ids: wm.get(b.id) ?? [], category_ids: cm.get(b.id) ?? [],
       ...(b.scope === "multi" ? {} : { wallet_ids: b.scope === "wallet" && b.wallet_id ? [b.wallet_id] : wm.get(b.id) ?? [], category_ids: b.scope === "category" && b.category_id ? [b.category_id] : cm.get(b.id) ?? [] }) };
