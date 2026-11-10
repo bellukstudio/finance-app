@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Family Finance" },
 };
 // viewport-fit=cover + themeColor lewat Next Viewport API (bukan <meta> manual) supaya tidak dobel.
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#6d4fe0" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#060A12" };
 
 const themeInit = `try{var t=localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t}catch(e){}`;
 export default function Root({ children }: { children: React.ReactNode }) {
