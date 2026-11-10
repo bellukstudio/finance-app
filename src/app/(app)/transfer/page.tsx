@@ -22,11 +22,11 @@ async function submit(fd: FormData) {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams;
-  const { sb, role } = await getCtx();
+  const { sb, role, familyId } = await getCtx();
   const today = new Date().toISOString().slice(0, 10);
-  const [{ data: ws }, { data: cats }, { data: bs }] = await Promise.all([sb.from("wallets").select("id,name").eq("is_active", true).is("deleted_at", null),
-    sb.from("categories").select("id,name").eq("type", "expense").eq("is_active", true).is("deleted_at", null),
-    sb.from("budgets").select("id,name,start_date,end_date").is("deleted_at", null).gte("end_date", today)]);
+  const [{ data: ws }, { data: cats }, { data: bs }] = await Promise.all([sb.from("wallets").select("id,name").eq("family_id", familyId).eq("is_active", true).is("deleted_at", null),
+    sb.from("categories").select("id,name").eq("family_id", familyId).eq("type", "expense").eq("is_active", true).is("deleted_at", null),
+    sb.from("budgets").select("id,name,start_date,end_date").eq("family_id", familyId).is("deleted_at", null).gte("end_date", today)]);
   return (<main><div className="ph"><div><h1>Transfer Antar-Dompet</h1><small className="muted">Transfer tidak dihitung sebagai pemasukan/pengeluaran. Jika dialokasikan, transfer menambah total budget.</small></div></div>
     {e && <p role="status" className="banner info">{e}</p>}
     {canWrite(role) ? <form action={submit} className="card" style={{ display: "grid", gap: 14, maxWidth: 560 }}><input type="hidden" name="idem" value={crypto.randomUUID()} />

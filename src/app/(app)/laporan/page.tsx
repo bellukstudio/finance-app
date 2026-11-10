@@ -11,7 +11,7 @@ type Key = keyof typeof REPORTS; type Row = Record<string, string | number>;
 export default async function Page({ searchParams }: { searchParams: Promise<{ r?: string; period?: string; from?: string; to?: string }> }) {
   const sp = await searchParams;
   const r: Key = sp.r && sp.r in REPORTS ? (sp.r as Key) : "cashflow";
-  const { sb, familyId } = await getCtx();
+  const { sb, familyId, ledger } = await getCtx();
   const p = resolvePeriod(sp.period, sp.from, sp.to);
   let body: React.ReactNode = null;
   if (r === "cashflow") {
@@ -28,12 +28,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
     body = <><WalletBars data={rows} /><ul>{rows.map(x => <li key={x.name}>{x.name}: {rupiah(x.value)}</li>)}</ul></>;
   } else {
     const [{ data: u }, { data: bs }, { data: cats }, { data: ws }] = await Promise.all([
-      sb.from("budget_usage").select("budget_id,budget,used,topup").lte("start_date", p.to).gte("end_date", p.from),
-      sb.from("budgets").select("id,name,scope,category_id,wallet_id"), sb.from("categories").select("id,name"), sb.from("wallets").select("id,name")]);
+      sb.from("budget_usage").select("budget_id,budget,used,topup").eq("family_id", familyId).lte("start_date", p.to).gte("end_date", p.from),
+      sb.from("budgets").select("id,name,scope,category_id,wallet_id").eq("family_id", familyId), sb.from("categories").select("id,name").eq("family_id", familyId), sb.from("wallets").select("id,name").eq("family_id", familyId)]);
     const m = new Map(bs?.map(b => [b.id, b])), cn = new Map(cats?.map(c => [c.id, c.name])), wn = new Map(ws?.map(w => [w.id, w.name]));
     body = <table><thead><tr><th>Budget</th><th>Anggaran</th><th>Terpakai</th><th>Status</th></tr></thead><tbody>{(u ?? []).map(x => { const b = m.get(x.budget_id), total = Number(x.budget) + Number(x.topup ?? 0);
       return <tr key={x.budget_id}><td>{b?.name || (b?.category_id && cn.get(b.category_id)) || (b?.wallet_id && wn.get(b.wallet_id)) || "Budget"}</td><td>{rupiah(total)}{Number(x.topup) > 0 && <small className="muted"> (+{rupiah(Number(x.topup))} transfer)</small>}</td><td>{rupiah(Number(x.used))}</td><td>{STATUS_LABEL[budgetStatus(Number(x.used), total)]}</td></tr>; })}</tbody></table>;
   }
-  return (<main><h1>Laporan</h1><PeriodForm current={p.key} from={p.from} to={p.to} extra={<select name="r" defaultValue={r}>{Object.entries(REPORTS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>} />
+  return (<main><h1>{ledger === "personal" ? "Laporan Pribadi" : "Laporan"}</h1><PeriodForm current={p.key} from={p.from} to={p.to} extra={<select name="r" defaultValue={r}>{Object.entries(REPORTS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>} />
     <p><small>Pembayaran utang tidak dihitung ke laporan kategori agar tidak ganda; transfer tidak dihitung sebagai pemasukan/pengeluaran.</small></p><div className="card">{body}</div></main>);
 }

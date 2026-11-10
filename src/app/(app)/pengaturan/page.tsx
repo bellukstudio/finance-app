@@ -13,9 +13,9 @@ async function rename(fd: FormData) {
 }
 async function signOutAll() { "use server"; const { sb } = await getCtx(); await sb.auth.signOut({ scope: "global" }); redirect("/login"); }
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
-  const { e } = await searchParams; const { sb, familyId, role } = await getCtx();
+  const { e } = await searchParams; const { sb, familyId, role, ledger } = await getCtx();
   const { data: f } = await sb.from("families").select("name,currency,timezone").eq("id", familyId).single();
   return (<main><h1>Pengaturan</h1>{e && <p role="status">{e}</p>}<p>Mata uang: {f?.currency} · Zona waktu: {f?.timezone}</p>
-    {role === "owner" && <form action={rename}><input name="name" defaultValue={f?.name} /><button>Ubah nama keluarga</button></form>}
+    {role === "owner" && <form action={rename}><input name="name" defaultValue={f?.name} /><button>{ledger === "personal" ? "Ubah nama catatan" : "Ubah nama keluarga"}</button></form>}
     <form action={signOutAll}><button>Keluar dari semua perangkat</button></form></main>);
 }

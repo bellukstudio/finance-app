@@ -9,7 +9,7 @@ const P = {
   target: "M12 21a9 9 0 100-18 9 9 0 000 18zM12 17a5 5 0 100-10 5 5 0 000 10zM12 13a1 1 0 100-2 1 1 0 000 2z",
   scale: "M12 3v18M5 7h14M5 7l-3 7a3.5 3.5 0 006 0zM19 7l-3 7a3.5 3.5 0 006 0z", bell: "M6 16V11a6 6 0 1112 0v5l2 2H4zM10 20a2 2 0 004 0",
   alert: "M12 3l10 18H2zM12 10v5M12 18h.01", hand: "M7 11l4-4 3 3 4-4M3 14l5 5 3-1 2 1 6-6-2-2", chev: "M6 9l6 6 6-6",
-  left: "M15 6l-6 6 6 6", right: "M9 6l6 6-6 6",
+  left: "M15 6l-6 6 6 6", right: "M9 6l6 6-6 6", lock: "M8 11V7a4 4 0 118 0v4M5 11h14v10H5zM12 15v3",
 } as const;
 export type IconName = keyof typeof P;
 export const Icon = ({ n, className = "ico" }: { n: IconName; className?: string }) => <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d={P[n]} /></svg>;

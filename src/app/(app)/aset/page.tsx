@@ -28,17 +28,17 @@ async function revalue(fd: FormData) {
 }
 async function remove(fd: FormData) {
   "use server";
-  const { sb, user, role } = await getCtx();
+  const { sb, user, role, familyId } = await getCtx();
   if (!canManage(role)) return back("/aset", "Hanya Owner/Admin.");
-  const { error } = await sb.from("assets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id")));
+  const { error } = await sb.from("assets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
   revalidatePath("/aset"); back("/aset", pgMessage(error));
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams;
-  const { sb, role } = await getCtx();
-  const [{ data: as }, { data: vals }] = await Promise.all([sb.from("assets").select("*").is("deleted_at", null).order("name"),
-    sb.from("asset_valuations").select("asset_id,value,valued_on").order("valued_on", { ascending: false })]);
+  const { sb, role, familyId } = await getCtx();
+  const [{ data: as }, { data: vals }] = await Promise.all([sb.from("assets").select("*").eq("family_id", familyId).is("deleted_at", null).order("name"),
+    sb.from("asset_valuations").select("asset_id,value,valued_on").eq("family_id", familyId).order("valued_on", { ascending: false })]);
   const total = (as ?? []).reduce((a, x) => a + Number(x.current_value), 0);
   return (<main>
     <div className="head"><div><h1>Aset</h1><small>Total nilai {rupiah(total)}</small></div></div>

@@ -8,14 +8,14 @@ import { TxRow } from "@/components/tx-row";
 const PAGE = 30;
 async function del(fd: FormData) {
   "use server";
-  const { sb, user } = await getCtx();
-  const { error } = await sb.from("transactions").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id")));
+  const { sb, user, familyId } = await getCtx();
+  const { error } = await sb.from("transactions").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
   revalidatePath("/", "layout"); back("/transaksi", pgMessage(error));
 }
 async function dup(fd: FormData) {
   "use server";
   const { sb, user, familyId } = await getCtx();
-  const { data: t } = await sb.from("transactions").select("type,amount,wallet_id,category_id,description,note,budget_id").eq("id", String(fd.get("id"))).single();
+  const { data: t } = await sb.from("transactions").select("type,amount,wallet_id,category_id,description,note,budget_id").eq("id", String(fd.get("id"))).eq("family_id", familyId).single();
   if (!t || t.type === "transfer") return back("/transaksi", "Transfer tidak dapat diduplikasi dari sini.");
   const { error } = await sb.from("transactions").insert({ ...t, date: new Date().toISOString().slice(0, 10), family_id: familyId, created_by: user.id });
   revalidatePath("/", "layout"); back("/transaksi", pgMessage(error));
@@ -27,9 +27,9 @@ const SHORT = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "O
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const { sb, role } = await getCtx();
+  const { sb, role, familyId } = await getCtx();
   const pg = Math.max(1, Number(sp.page) || 1);
-  let q = sb.from("transactions").select("id,date,type,amount,description,note,wallet_id,to_wallet_id,category_id,budget_id,created_by", { count: "exact" }).is("deleted_at", null)
+  let q = sb.from("transactions").select("id,date,type,amount,description,note,wallet_id,to_wallet_id,category_id,budget_id,created_by", { count: "exact" }).eq("family_id", familyId).is("deleted_at", null)
     .order("date", { ascending: false }).order("created_at", { ascending: false }).range((pg - 1) * PAGE, pg * PAGE - 1);
   if (sp.q) q = q.ilike("description", `%${sp.q.replace(/[%_]/g, "")}%`);
   if (sp.wallet) q = q.eq("wallet_id", sp.wallet);
@@ -37,8 +37,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   if (sp.from) q = q.gte("date", sp.from);
   if (sp.to) q = q.lte("date", sp.to);
   const [{ data: txs, count }, { data: wallets }, { data: cats }, { data: bs }] = await Promise.all([q,
-    sb.from("wallets").select("id,name").is("deleted_at", null), sb.from("categories").select("id,name").is("deleted_at", null),
-    sb.from("budgets").select("id,name,category_id").is("deleted_at", null)]);
+    sb.from("wallets").select("id,name").eq("family_id", familyId).is("deleted_at", null), sb.from("categories").select("id,name").eq("family_id", familyId).is("deleted_at", null),
+    sb.from("budgets").select("id,name,category_id").eq("family_id", familyId).is("deleted_at", null)]);
   const cn = new Map(cats?.map(c => [c.id, c.name]));
   const maps = { wallets: new Map(wallets?.map(w => [w.id, w.name])), cats: cn, budgets: new Map((bs ?? []).map(b => [b.id, b.name || (b.category_id && cn.get(b.category_id)) || "Budget"])) };
   const { data: atts } = txs?.length ? await sb.from("attachments").select("id,transaction_id,mime_type").in("transaction_id", txs.map(t => t.id)).is("deleted_at", null) : { data: [] as { id: string; transaction_id: string; mime_type: string }[] };

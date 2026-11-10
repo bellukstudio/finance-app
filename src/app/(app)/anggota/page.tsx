@@ -10,7 +10,8 @@ import { getOrigin } from "@/lib/origin";
 const ROLES = ["admin", "member", "viewer"] as const;
 async function invite(fd: FormData) {
   "use server";
-  const { sb, user, familyId, role } = await getCtx();
+  const { sb, user, familyId, role, ledger } = await getCtx();
+  if (ledger === "personal") return back("/dashboard", "Catatan pribadi tidak dapat dibagikan.");
   if (!canManage(role)) return back("/anggota", "Hanya Owner/Admin.");
   if (!(await rateLimit(sb, "invite", 10, 3600))) return back("/anggota", "Terlalu banyak undangan, coba lagi nanti.");
   const r = z.enum(ROLES).safeParse(fd.get("role")); if (!r.success) return back("/anggota", "Role tidak valid.");
@@ -21,29 +22,32 @@ async function invite(fd: FormData) {
 }
 async function changeRole(fd: FormData) {
   "use server";
-  const { sb, familyId } = await getCtx();
+  const { sb, familyId, ledger } = await getCtx();
+  if (ledger === "personal") return back("/dashboard", "Catatan pribadi tidak memiliki anggota.");
   const p = z.object({ uid: z.string().uuid(), r: z.enum(ROLES) }).safeParse(Object.fromEntries(fd)); if (!p.success) return back("/anggota", "Input tidak valid.");
   const { error } = await sb.rpc("change_member_role", { fid: familyId, uid: p.data.uid, r: p.data.r });
   revalidatePath("/anggota"); back("/anggota", pgMessage(error));
 }
 async function removeMember(fd: FormData) {
   "use server";
-  const { sb, familyId } = await getCtx();
+  const { sb, familyId, ledger } = await getCtx();
+  if (ledger === "personal") return back("/dashboard", "Catatan pribadi tidak memiliki anggota.");
   const { error } = await sb.rpc("remove_member", { fid: familyId, uid: String(fd.get("uid")) });
   revalidatePath("/anggota"); back("/anggota", pgMessage(error));
 }
 async function revoke(fd: FormData) {
   "use server";
-  const { sb, role } = await getCtx(); if (!canManage(role)) return back("/anggota", "Hanya Owner/Admin.");
-  const { error } = await sb.from("family_invitations").update({ status: "revoked" }).eq("id", String(fd.get("id")));
+  const { sb, role, familyId } = await getCtx(); if (!canManage(role)) return back("/anggota", "Hanya Owner/Admin.");
+  const { error } = await sb.from("family_invitations").update({ status: "revoked" }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
   revalidatePath("/anggota"); back("/anggota", pgMessage(error));
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams; void headers;
-  const { sb, user, role } = await getCtx();
-  const [{ data: ms }, { data: ps }, { data: inv }] = await Promise.all([sb.from("family_members").select("user_id,role,created_at").is("deleted_at", null),
-    sb.from("profiles").select("id,full_name"), sb.from("family_invitations").select("id,role,expires_at").eq("status", "pending").gt("expires_at", new Date().toISOString())]);
+  const { sb, user, role, familyId, ledger } = await getCtx();
+  if (ledger === "personal") return (<main><h1>Catatan Pribadi</h1><p>Catatan pribadi hanya dapat dilihat dan diakses oleh Anda sebagai Owner. Tidak ada anggota atau undangan di sini.</p></main>);
+  const [{ data: ms }, { data: ps }, { data: inv }] = await Promise.all([sb.from("family_members").select("user_id,role,created_at").eq("family_id", familyId).is("deleted_at", null),
+    sb.from("profiles").select("id,full_name"), sb.from("family_invitations").select("id,role,expires_at").eq("family_id", familyId).eq("status", "pending").gt("expires_at", new Date().toISOString())]);
   const pn = new Map(ps?.map(p => [p.id, p.full_name]));
   return (<main><h1>Anggota Keluarga</h1>{e && <p role="status" style={{ wordBreak: "break-all" }}>{e}</p>}
     <ul>{ms?.map(m => <li key={m.user_id}>{pn.get(m.user_id) ?? m.user_id} — <b>{m.role}</b> {m.user_id === user.id && "(Anda)"}

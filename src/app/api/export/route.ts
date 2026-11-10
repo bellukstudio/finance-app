@@ -1,27 +1,27 @@
 import { NextResponse, type NextRequest } from "next/server";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
-import { supabaseServer } from "@/lib/supabase/server";
+import { getOptionalCtx } from "@/lib/context";
 import { rateLimit } from "@/lib/rate-limit";
 import { csvRow, ddmmyyyy } from "@/lib/export";
 
 export const maxDuration = 30;
 const LIMIT = 10000;
 export async function GET(req: NextRequest) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return new NextResponse("Unauthorized", { status: 401 });
+  const ctx = await getOptionalCtx();  // mengikuti catatan aktif (keluarga/pribadi); RLS tetap membatasi akses
+  if (!ctx) return new NextResponse("Unauthorized", { status: 401 });
+  const { sb, familyId, ledger } = ctx;
   if (!(await rateLimit(sb, "export", 10, 60))) return new NextResponse("Terlalu banyak permintaan", { status: 429 });
   const sp = req.nextUrl.searchParams, fmt = sp.get("format") ?? "csv", from = sp.get("from"), to = sp.get("to");
-  let q = sb.from("transactions").select("date,type,amount,description,note,wallet_id,category_id").is("deleted_at", null).order("date", { ascending: false }).limit(LIMIT);
+  let q = sb.from("transactions").select("date,type,amount,description,note,wallet_id,category_id").eq("family_id", familyId).is("deleted_at", null).order("date", { ascending: false }).limit(LIMIT);
   if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) q = q.gte("date", from);
   if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) q = q.lte("date", to);
-  const [{ data: txs, error }, { data: ws }, { data: cs }] = await Promise.all([q, sb.from("wallets").select("id,name"), sb.from("categories").select("id,name")]);
+  const [{ data: txs, error }, { data: ws }, { data: cs }] = await Promise.all([q, sb.from("wallets").select("id,name").eq("family_id", familyId), sb.from("categories").select("id,name").eq("family_id", familyId)]);
   if (error) return new NextResponse("Gagal mengambil data", { status: 500 });
   const wn = new Map(ws?.map(w => [w.id, w.name])), cn = new Map(cs?.map(c => [c.id, c.name]));
   const head = ["Tanggal", "Jenis", "Nominal", "Dompet", "Kategori", "Deskripsi", "Catatan"];
   const rows = (txs ?? []).map(t => [ddmmyyyy(t.date), t.type, Number(t.amount), wn.get(t.wallet_id) ?? "", cn.get(t.category_id ?? "") ?? "", t.description ?? "", t.note ?? ""]);
-  const name = `transaksi-${new Date().toISOString().slice(0, 10)}`;
+  const name = `transaksi${ledger === "personal" ? "-pribadi" : ""}-${new Date().toISOString().slice(0, 10)}`;
   if (fmt === "xlsx") {
     const wb = new ExcelJS.Workbook(); const sh = wb.addWorksheet("Transaksi");
     sh.addRow(head).font = { bold: true }; rows.forEach(r => sh.addRow(r.map(c => (typeof c === "string" && /^[=+\-@]/.test(c) ? "'" + c : c))));

@@ -278,3 +278,16 @@ button.cf-danger{background:var(--expense);color:#fff}
 a.auth-btn{display:inline-flex;align-items:center;justify-content:center;background:var(--primary);color:var(--primary-ink);border-radius:9px;font-weight:650;text-decoration:none}
 .auth-sub{font-size:.85rem;color:var(--muted);padding:6px}
 @media(max-width:480px){.auth-wrap{padding:14px}.auth-card{padding:26px 20px}}
+
+/* ===== Catatan pribadi Owner ===== */
+.ledger-sw{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;margin:0 0 10px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px}
+.sheet .ledger-sw{margin:0 0 14px}
+.ledger-sw button{background:transparent;color:var(--muted);border:0;padding:.42rem .5rem;font-size:.84rem;border-radius:8px;width:100%;gap:5px}
+.ledger-sw button .ico{width:16px;height:16px}
+.ledger-sw button:hover:not(:disabled){filter:none;background:var(--surface);color:var(--text)}
+.ledger-sw button[aria-pressed=true]:disabled{opacity:1;cursor:default;background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgb(0 0 0/.12)}
+.shell[data-ledger=personal] .ledger-sw button[aria-pressed=true]:disabled{background:var(--primary);color:var(--primary-ink);box-shadow:none}
+.shell[data-ledger=personal] .side{box-shadow:inset 3px 0 0 var(--primary)}
+.shell[data-ledger=personal] .topbar{border-top:3px solid var(--primary)}
+.ledger-tag{display:inline-flex;align-items:center;gap:4px;font-size:.74rem;font-weight:700;color:var(--primary);border:1px solid var(--primary);border-radius:99px;padding:1px 9px}
+.ledger-tag .ico{width:13px;height:13px}

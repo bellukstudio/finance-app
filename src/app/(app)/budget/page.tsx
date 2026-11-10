@@ -4,13 +4,13 @@ import { BudgetManager, type BudgetView } from "@/components/budget-manager";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ history?: string }> }) {
   const { history } = await searchParams;
-  const { sb, role } = await getCtx();
+  const { sb, role, familyId } = await getCtx();
   const today = todayJakarta();
   const [{ data: bs }, { data: usage }, { data: bw }, { data: bc }, { data: ws }, { data: cats }] = await Promise.all([
-    sb.from("budgets").select("id,name,scope,category_id,wallet_id,start_date,end_date,amount").is("deleted_at", null).order("start_date", { ascending: false }).order("created_at"),
-    sb.from("budget_usage").select("budget_id,used,topup"), sb.from("budget_wallets").select("budget_id,wallet_id"), sb.from("budget_categories").select("budget_id,category_id"),
-    sb.from("wallets").select("id,name").eq("is_active", true).is("deleted_at", null).order("name"),
-    sb.from("categories").select("id,name").eq("type", "expense").eq("is_active", true).is("deleted_at", null).order("name")]);
+    sb.from("budgets").select("id,name,scope,category_id,wallet_id,start_date,end_date,amount").eq("family_id", familyId).is("deleted_at", null).order("start_date", { ascending: false }).order("created_at"),
+    sb.from("budget_usage").select("budget_id,used,topup").eq("family_id", familyId), sb.from("budget_wallets").select("budget_id,wallet_id").eq("family_id", familyId), sb.from("budget_categories").select("budget_id,category_id").eq("family_id", familyId),
+    sb.from("wallets").select("id,name").eq("family_id", familyId).eq("is_active", true).is("deleted_at", null).order("name"),
+    sb.from("categories").select("id,name").eq("family_id", familyId).eq("type", "expense").eq("is_active", true).is("deleted_at", null).order("name")]);
   const cn = new Map((cats ?? []).map((c) => [c.id, c.name])), wn = new Map((ws ?? []).map((w) => [w.id, w.name]));
   const u = new Map((usage ?? []).map((x) => [x.budget_id, x]));
   const group = (rows: Record<string, string>[] | null, key: "wallet_id" | "category_id") => { const m = new Map<string, string[]>(); (rows ?? []).forEach((r) => { const b = r.budget_id, v = r[key]; if (b && v) m.set(b, [...(m.get(b) ?? []), v]); }); return m; };

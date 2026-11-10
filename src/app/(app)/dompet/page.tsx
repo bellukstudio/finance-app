@@ -19,23 +19,23 @@ async function create(fd: FormData) {
 }
 async function toggle(fd: FormData) {
   "use server";
-  const { sb, user, role } = await getCtx();
+  const { sb, user, role, familyId } = await getCtx();
   if (!canManage(role)) return back("/dompet", "Tidak ada izin.");
-  const { error } = await sb.from("wallets").update({ is_active: fd.get("active") !== "true", updated_by: user.id }).eq("id", String(fd.get("id")));
+  const { error } = await sb.from("wallets").update({ is_active: fd.get("active") !== "true", updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
   revalidatePath("/dompet"); back("/dompet", pgMessage(error));
 }
 async function remove(fd: FormData) {
   "use server";
-  const { sb, user, role } = await getCtx();
+  const { sb, user, role, familyId } = await getCtx();
   if (!canManage(role)) return back("/dompet", "Tidak ada izin.");
-  const { error } = await sb.from("wallets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id")));
+  const { error } = await sb.from("wallets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
   revalidatePath("/dompet"); back("/dompet", pgMessage(error));
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams;
-  const { sb, role } = await getCtx();
-  const [{ data: bal }, { data: ws }] = await Promise.all([sb.from("wallet_balances").select("wallet_id,balance"), sb.from("wallets").select("*").is("deleted_at", null).order("name")]);
+  const { sb, role, familyId } = await getCtx();
+  const [{ data: bal }, { data: ws }] = await Promise.all([sb.from("wallet_balances").select("wallet_id,balance").eq("family_id", familyId), sb.from("wallets").select("*").eq("family_id", familyId).is("deleted_at", null).order("name")]);
   const b = new Map(bal?.map(x => [x.wallet_id, Number(x.balance)]));
   const total = (ws ?? []).reduce((a, w) => a + (b.get(w.id) ?? 0), 0);
   return (<main>

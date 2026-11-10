@@ -23,7 +23,7 @@ export async function saveTx(input: TxInput): Promise<TxResult> {
   if (!p.success) return { ok: false, error: "Input tidak valid." };
   const v = p.data;
   if (v.budget_id) {
-    const { data: b } = await sb.from("budgets").select("id").eq("id", v.budget_id).is("deleted_at", null).maybeSingle();
+    const { data: b } = await sb.from("budgets").select("id").eq("id", v.budget_id).eq("family_id", familyId).is("deleted_at", null).maybeSingle();
     if (!b) return { ok: false, error: "Budget tidak ditemukan." };
   }
   let error: { code?: string; message?: string } | null = null, id: string | null = null;

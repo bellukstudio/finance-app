@@ -22,8 +22,9 @@ export async function saveBudget(input: BudgetInput): Promise<Result> {
   const row = { name: v.name, scope: "multi", category_id: null, wallet_id: null, period_type: "monthly", start_date: start, end_date: end, amount: v.amount, updated_by: user.id };
   let id = v.id;
   if (id) {
-    const { error } = await sb.from("budgets").update(row).eq("id", id).is("deleted_at", null);
+    const { data: upd, error } = await sb.from("budgets").update(row).eq("id", id).eq("family_id", familyId).is("deleted_at", null).select("id");
     if (error) return { ok: false, error: pgMessage(error) ?? "Gagal menyimpan." };
+    if (!upd?.length) return { ok: false, error: "Budget tidak ditemukan." };
     await sb.from("budget_wallets").delete().eq("budget_id", id); await sb.from("budget_categories").delete().eq("budget_id", id);
   } else {
     const { data, error } = await sb.from("budgets").insert({ ...row, family_id: familyId, created_by: user.id }).select("id").single();
@@ -37,9 +38,9 @@ export async function saveBudget(input: BudgetInput): Promise<Result> {
 }
 
 export async function removeBudget(id: string): Promise<Result> {
-  const { sb, user, role } = await getCtx();
+  const { sb, user, role, familyId } = await getCtx();
   if (!canManage(role)) return { ok: false, error: "Hanya Owner/Admin." };
-  const { error } = await sb.from("budgets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", id);
+  const { error } = await sb.from("budgets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", id).eq("family_id", familyId);
   if (error) return { ok: false, error: pgMessage(error) ?? "Gagal menghapus." };
   revalidatePath("/", "layout");
   return { ok: true };

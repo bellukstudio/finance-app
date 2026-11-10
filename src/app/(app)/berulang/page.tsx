@@ -14,16 +14,16 @@ async function create(fd: FormData) {
   const { sb, user, familyId, role } = await getCtx();
   if (!canWrite(role)) return back("/berulang", "Viewer tidak dapat mengubah data.");
   const p = R.safeParse(Object.fromEntries(fd)); if (!p.success) return back("/berulang", "Input tidak valid.");
-  const { data: c } = await sb.from("categories").select("type").eq("id", p.data.category_id).single();
+  const { data: c } = await sb.from("categories").select("type").eq("id", p.data.category_id).eq("family_id", familyId).single();
   if (c?.type !== p.data.type) return back("/berulang", "Kategori tidak sesuai dengan jenis transaksi.");
   const { error } = await sb.from("recurring_transactions").insert({ ...p.data, end_date: p.data.end_date || null, family_id: familyId, created_by: user.id });
   revalidatePath("/berulang"); back("/berulang", pgMessage(error));
 }
 async function toggle(fd: FormData) {
   "use server";
-  const { sb, user, role } = await getCtx();
+  const { sb, user, role, familyId } = await getCtx();
   if (!canWrite(role)) return back("/berulang", "Tidak ada izin.");
-  const { error } = await sb.from("recurring_transactions").update({ is_active: fd.get("active") !== "true", updated_by: user.id }).eq("id", String(fd.get("id")));
+  const { error } = await sb.from("recurring_transactions").update({ is_active: fd.get("active") !== "true", updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
   revalidatePath("/berulang"); back("/berulang", pgMessage(error));
 }
 async function runNow() {
@@ -36,9 +36,9 @@ async function runNow() {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams;
-  const { sb, role } = await getCtx();
-  const [{ data: rs }, { data: ws }, { data: cats }] = await Promise.all([sb.from("recurring_transactions").select("*").is("deleted_at", null).order("start_date"),
-    sb.from("wallets").select("id,name").eq("is_active", true).is("deleted_at", null), sb.from("categories").select("id,name,type").eq("is_active", true).is("deleted_at", null)]);
+  const { sb, role, familyId } = await getCtx();
+  const [{ data: rs }, { data: ws }, { data: cats }] = await Promise.all([sb.from("recurring_transactions").select("*").eq("family_id", familyId).is("deleted_at", null).order("start_date"),
+    sb.from("wallets").select("id,name").eq("family_id", familyId).eq("is_active", true).is("deleted_at", null), sb.from("categories").select("id,name,type").eq("family_id", familyId).eq("is_active", true).is("deleted_at", null)]);
   const wn = new Map(ws?.map(w => [w.id, w.name])), cn = new Map(cats?.map(c => [c.id, c.name]));
   return (<main><h1>Transaksi Berulang</h1>{e && <p role="status">{e}</p>}
     <p><small>Dijalankan otomatis tiap hari 00:05 WIB (pg_cron). Aman dijalankan berulang: satu tanggal hanya membuat satu transaksi.</small></p>

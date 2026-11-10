@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { getCtx } from "@/lib/context";
+import { getOptionalCtx } from "@/lib/context";
 import { rupiah } from "@/lib/format";
 import { todayJakarta } from "@/lib/period";
 import { CategoryPie, IncomeExpenseChart } from "@/components/charts";
@@ -26,9 +26,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const sb0 = await supabaseServer();
   const { data: { user } } = await sb0.auth.getUser();
   if (!user) redirect("/login");
-  const { data: mem } = await sb0.from("family_members").select("family_id").is("deleted_at", null).limit(1).maybeSingle();
-  if (!mem) return <form action={createFamily} className="card stack" style={{ maxWidth: 420, display: "grid", gap: 12 }}><h1>Buat Keluarga</h1><input name="name" placeholder="Nama keluarga" required /><button>Buat</button></form>;
-  const { sb, familyId } = await getCtx();
+  const ctx = await getOptionalCtx();
+  if (!ctx) return <form action={createFamily} className="card stack" style={{ maxWidth: 420, display: "grid", gap: 12 }}><h1>Buat Keluarga</h1><input name="name" placeholder="Nama keluarga" required /><button>Buat</button></form>;
+  const { sb, familyId, ledger } = ctx;
   const cur = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.m ?? "") ? sp.m! : todayJakarta().slice(0, 7);
   const y = Number(cur.slice(0, 4)), mo = Number(cur.slice(5, 7));
   const from = `${cur}-01`, to = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10);
@@ -37,13 +37,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     sb.from("wallet_balances").select("wallet_id,name,balance").eq("family_id", familyId),
     sb.rpc("report_series", { fid: familyId, d_from: from, d_to: to, grain: "day" }),
     sb.rpc("report_by_category", { fid: familyId, d_from: from, d_to: to, t: "expense" }),
-    sb.from("budgets").select("id,name,category_id,wallet_id,start_date,end_date,amount").is("deleted_at", null).lte("start_date", to).gte("end_date", from),
-    sb.from("budget_usage").select("budget_id,used,topup"),
-    sb.from("transactions").select("id,date,type,amount,description,note,wallet_id,to_wallet_id,category_id,budget_id").is("deleted_at", null).order("date", { ascending: false }).order("created_at", { ascending: false }).limit(6),
-    sb.from("transactions").select("amount").eq("type", "transfer").is("deleted_at", null).gte("date", from).lte("date", to),
-    sb.from("debts").select("id,direction,principal").is("deleted_at", null),
-    sb.from("debt_payments").select("debt_id,amount").is("deleted_at", null),
-    sb.from("categories").select("id,name").is("deleted_at", null)]);
+    sb.from("budgets").select("id,name,category_id,wallet_id,start_date,end_date,amount").eq("family_id", familyId).is("deleted_at", null).lte("start_date", to).gte("end_date", from),
+    sb.from("budget_usage").select("budget_id,used,topup").eq("family_id", familyId),
+    sb.from("transactions").select("id,date,type,amount,description,note,wallet_id,to_wallet_id,category_id,budget_id").eq("family_id", familyId).is("deleted_at", null).order("date", { ascending: false }).order("created_at", { ascending: false }).limit(6),
+    sb.from("transactions").select("amount").eq("family_id", familyId).eq("type", "transfer").is("deleted_at", null).gte("date", from).lte("date", to),
+    sb.from("debts").select("id,direction,principal").eq("family_id", familyId).is("deleted_at", null),
+    sb.from("debt_payments").select("debt_id,amount").eq("family_id", familyId).is("deleted_at", null),
+    sb.from("categories").select("id,name").eq("family_id", familyId).is("deleted_at", null)]);
   const x = (s ?? {}) as Record<string, number>;
   const income = x.income ?? 0, expense = x.expense ?? 0, net = income - expense;
   const trfSum = (trf ?? []).reduce((a, r) => a + Number(r.amount), 0);
@@ -60,7 +60,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     return href ? <Link href={href} className="sc" style={{ ["--c" as string]: c }}>{body}</Link> : <div className="sc" style={{ ["--c" as string]: c }}>{body}</div>;
   };
   return (<main>
-    <div className="ph"><div className="l"><h1>Dashboard</h1>
+    <div className="ph"><div className="l"><h1>{ledger === "personal" ? "Dashboard Pribadi" : "Dashboard"}</h1>
       <div className="mnav" role="group" aria-label="Pilih bulan"><Link href={`?m=${shift(y, mo, -1)}`} aria-label="Bulan sebelumnya"><Icon n="left" /></Link><span>{MONTHS[mo - 1]} {y}</span><Link href={`?m=${shift(y, mo, 1)}`} aria-label="Bulan berikutnya"><Icon n="right" /></Link></div></div>
       <button type="button" data-open-tx><Icon n="plus" /> Transaksi</button></div>
     <div className="banners">

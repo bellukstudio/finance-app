@@ -18,13 +18,13 @@ async function create(fd: FormData) {
 // Hapus permanen hanya jika belum dipakai; jika dipakai, diarsipkan (nonaktif).
 async function remove(fd: FormData) {
   "use server";
-  const { sb, user, role } = await getCtx();
+  const { sb, user, role, familyId } = await getCtx();
   if (!canManage(role)) return back("/kategori", "Hanya Owner/Admin.");
   const id = String(fd.get("id"));
-  const { error } = await sb.from("categories").delete().eq("id", id);
+  const { error } = await sb.from("categories").delete().eq("id", id).eq("family_id", familyId);
   let msg: string | null = null;
   if (error?.code === "23503") {
-    const r = await sb.from("categories").update({ is_active: false, deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", id);
+    const r = await sb.from("categories").update({ is_active: false, deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", id).eq("family_id", familyId);
     msg = r.error ? pgMessage(r.error) : "Kategori sudah dipakai transaksi, jadi diarsipkan (tidak dihapus permanen).";
   } else msg = pgMessage(error);
   revalidatePath("/kategori"); back("/kategori", msg);
@@ -32,8 +32,8 @@ async function remove(fd: FormData) {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams;
-  const { sb, role } = await getCtx();
-  const { data: cats } = await sb.from("categories").select("id,name,type,parent_id").is("deleted_at", null).order("name");
+  const { sb, role, familyId } = await getCtx();
+  const { data: cats } = await sb.from("categories").select("id,name,type,parent_id").eq("family_id", familyId).is("deleted_at", null).order("name");
   const parents = cats?.filter(c => !c.parent_id) ?? [];
   const L = { expense: "Pengeluaran", income: "Pemasukan" } as const;
   return (<main>

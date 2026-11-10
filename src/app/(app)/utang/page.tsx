@@ -27,10 +27,10 @@ async function pay(fd: FormData) {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams;
-  const { sb, role } = await getCtx(); const today = todayJakarta();
-  const [{ data: ds }, { data: ps }, { data: ws }, { data: cats }] = await Promise.all([sb.from("debts").select("*").is("deleted_at", null).order("due_date", { nullsFirst: false }),
-    sb.from("debt_payments").select("debt_id,amount,paid_on").is("deleted_at", null).order("paid_on", { ascending: false }),
-    sb.from("wallets").select("id,name").eq("is_active", true).is("deleted_at", null), sb.from("categories").select("id,name,type").eq("is_active", true).is("deleted_at", null)]);
+  const { sb, role, familyId } = await getCtx(); const today = todayJakarta();
+  const [{ data: ds }, { data: ps }, { data: ws }, { data: cats }] = await Promise.all([sb.from("debts").select("*").eq("family_id", familyId).is("deleted_at", null).order("due_date", { nullsFirst: false }),
+    sb.from("debt_payments").select("debt_id,amount,paid_on").eq("family_id", familyId).is("deleted_at", null).order("paid_on", { ascending: false }),
+    sb.from("wallets").select("id,name").eq("family_id", familyId).eq("is_active", true).is("deleted_at", null), sb.from("categories").select("id,name,type").eq("family_id", familyId).eq("is_active", true).is("deleted_at", null)]);
   return (<main>
     <div className="head"><div><h1>Utang &amp; Piutang</h1><small>Catat pokok, jatuh tempo, dan pembayaran</small></div></div>
     {e && <p role="alert">{e}</p>}
