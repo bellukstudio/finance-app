@@ -1,23 +1,20 @@
 "use server";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { getCtx, LEDGER_COOKIE, back } from "@/lib/context";
+import { getCtx, setLedgerCookie, back } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 
-/** Pindah antara catatan Keluarga dan catatan Pribadi. Catatan pribadi hanya untuk Owner (dijaga juga oleh database). */
+/** Pindah catatan aktif: "personal" (milik sendiri) atau id grup keluarga yang diikuti user. */
 export async function switchLedger(fd: FormData) {
-  const to = fd.get("to") === "personal" ? "personal" : "family";
-  const { sb, canPersonal } = await getCtx();
-  const store = await cookies();
+  const to = String(fd.get("to") ?? "");
+  const { sb, ledgers } = await getCtx();
   if (to === "personal") {
-    if (!canPersonal) return back("/dashboard", "Catatan pribadi hanya tersedia untuk Owner.");
     const { error } = await sb.rpc("ensure_personal_ledger");  // idempoten: membuat saat pertama kali dibuka
     if (error) return back("/dashboard", pgMessage(error));
-    store.set(LEDGER_COOKIE, "personal", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 365 });
-  } else {
-    store.delete(LEDGER_COOKIE);
+  } else if (!ledgers.some((l) => l.kind === "family" && l.key === to)) {
+    return back("/dashboard", "Catatan tidak ditemukan atau Anda bukan anggotanya.");
   }
+  await setLedgerCookie(to);
   revalidatePath("/", "layout");
   redirect("/dashboard");
 }

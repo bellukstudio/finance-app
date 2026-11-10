@@ -8,8 +8,8 @@ async function signOut() { "use server"; const sb = await supabaseServer(); awai
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const ctx = await getOptionalCtx();
   // Belum punya keluarga (dashboard menampilkan form pembuatan): tanpa data & tanpa pengalih catatan.
-  if (!ctx) return <AppNav unread={0} signOut={signOut} wallets={[]} cats={[]} budgets={[]} ledger="family" canPersonal={false} switchLedger={switchLedger}>{children}</AppNav>;
-  const { sb, familyId: fid, ledger, canPersonal } = ctx;
+  if (!ctx) return <AppNav unread={0} signOut={signOut} wallets={[]} cats={[]} budgets={[]} ledger="family" ledgers={[]} switchLedger={switchLedger}>{children}</AppNav>;
+  const { sb, familyId: fid, ledger, ledgers } = ctx;
   const today = todayJakarta(), from = new Date(Date.parse(today) - 62 * 86400000).toISOString().slice(0, 10);
   const [{ count }, { data: ws }, { data: cs }, { data: bs }] = await Promise.all([
     sb.from("notifications").select("id", { count: "exact", head: true }).eq("family_id", fid).is("read_at", null),
@@ -20,5 +20,5 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const cn = new Map((cs ?? []).map((c) => [c.id, c.name])), wn = new Map((ws ?? []).map((w) => [w.id, w.name]));
   const budgets = (bs ?? []).map((b) => ({ id: b.id, start: b.start_date, end: b.end_date,
     name: b.name || (b.category_id ? cn.get(b.category_id) : b.wallet_id ? wn.get(b.wallet_id) : null) || "Budget" }));
-  return <AppNav unread={count ?? 0} signOut={signOut} wallets={ws ?? []} cats={cs ?? []} budgets={budgets} ledger={ledger} canPersonal={canPersonal} switchLedger={switchLedger}>{children}</AppNav>;
+  return <AppNav unread={count ?? 0} signOut={signOut} wallets={ws ?? []} cats={cs ?? []} budgets={budgets} ledger={ledger} ledgers={ledgers} switchLedger={switchLedger}>{children}</AppNav>;
 }

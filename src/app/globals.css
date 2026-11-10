@@ -326,3 +326,20 @@ h2.sec{margin:6px 0 -6px}
 .xfer .fld input,.xfer .fld select{min-height:42px}
 .xfer .fld input[type=date]{min-width:0}
 .xfer-sub{font-size:.78rem;color:var(--muted);margin:0}
+
+/* ===== Pengalih catatan (pribadi + grup) ===== */
+.lp{position:relative;margin:0 0 10px}
+.sheet .lp{margin:0 0 14px}
+.lp-cur,.lp-item{display:flex;align-items:center;gap:10px;width:100%;justify-content:flex-start;text-align:left;background:var(--surface-2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:500}
+.lp-cur:hover,.lp-item:hover:not(:disabled){filter:none;background:var(--surface)}
+.lp-cur .ico,.lp-item .ico{width:16px;height:16px;flex:none;color:var(--primary)}
+.lp-t{flex:1;min-width:0;display:grid;line-height:1.25}.lp-t b{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lp-t small{font-size:.72rem}
+.lp-chev{transition:transform .15s}.lp-cur[aria-expanded=true] .lp-chev{transform:rotate(180deg)}
+.lp-list{display:grid;gap:4px;margin-top:6px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:11px}
+.lp-list[hidden]{display:none}
+.lp-list .grp{padding:8px 6px 2px}
+.lp-item{background:transparent;border-color:transparent}
+.lp-item[aria-current=true]:disabled{opacity:1;cursor:default;background:var(--surface-2);border-color:var(--line)}
+.shell[data-ledger=personal] .lp-cur{border-color:var(--primary)}
+.lp-new{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-top:2px;border-top:1px solid var(--line);border-radius:0 0 8px 8px;color:var(--muted);font-size:.84rem;font-weight:600}
+.lp-new:hover{color:var(--text);text-decoration:none;background:var(--surface-2)}.lp-new .ico{width:14px;height:14px}

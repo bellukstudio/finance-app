@@ -4,24 +4,47 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
 import { ConfirmDialog } from "./confirm-dialog";
+import type { LedgerOpt } from "@/lib/context";
 import { TxModal, type BudgetOpt, type CatOpt, type Opt } from "./tx-modal";
 
 type Ledger = "family" | "personal";
 
-/** Pengalih Keluarga / Pribadi. Hanya dirender untuk Owner (server juga menolak non-Owner). */
-function LedgerSwitch({ ledger, action }: { ledger: Ledger; action: (fd: FormData) => Promise<void> }) {
-  const opt = (to: Ledger, label: string, icon: "home" | "lock") => (
-    <form action={action} key={to}><input type="hidden" name="to" value={to} />
-      <button type="submit" aria-pressed={ledger === to} disabled={ledger === to}><Icon n={icon} />{label}</button></form>
+const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", member: "Anggota", viewer: "Viewer" };
+
+/** Pengalih catatan: catatan pribadi sendiri + semua grup keluarga yang diikuti. Server menolak grup yang bukan keanggotaan user. */
+function LedgerPicker({ ledgers, action }: { ledgers: LedgerOpt[]; action: (fd: FormData) => Promise<void> }) {
+  const path = usePathname(), [open, setOpen] = useState(false);
+  const cur = ledgers.find((l) => l.active) ?? ledgers[0];
+  useEffect(() => setOpen(false), [path, cur?.key]);
+  if (!cur) return null;
+  const me = ledgers.find((l) => l.kind === "personal"), groups = ledgers.filter((l) => l.kind === "family");
+  const sub = (l: LedgerOpt) => (l.kind === "personal" ? (l.role ? "Hanya Anda" : "Dibuat saat pertama dibuka") : ROLE_LABEL[l.role ?? ""] ?? "");
+  const item = (l: LedgerOpt) => (
+    <form action={action} key={l.key}><input type="hidden" name="to" value={l.key} />
+      <button type="submit" className="lp-item" aria-current={l.active ? "true" : undefined} disabled={l.active}>
+        <Icon n={l.kind === "personal" ? "lock" : "home"} /><span className="lp-t"><b>{l.label}</b><small>{sub(l)}</small></span>
+      </button></form>
   );
-  return <div className="ledger-sw" role="group" aria-label="Pilih catatan keuangan">{opt("family", "Keluarga", "home")}{opt("personal", "Pribadi", "lock")}</div>;
+  return (
+    <div className="lp">
+      <button type="button" className="lp-cur" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Icon n={cur.kind === "personal" ? "lock" : "home"} /><span className="lp-t"><b>{cur.label}</b><small>{sub(cur)}</small></span><Icon n="chev" className="ico lp-chev" />
+      </button>
+      <div className="lp-list" hidden={!open}>
+        {me && item(me)}
+        <div className="grp">Grup keluarga ({groups.length})</div>
+        {groups.map(item)}
+        <Link href="/grup" className="lp-new"><Icon n="plus" /> Buat atau kelola grup</Link>
+      </div>
+    </div>
+  );
 }
 
 const GROUPS: [string, [string, string][]][] = [
   ["Utama", [["/dashboard", "Dashboard"], ["/transaksi", "Transaksi"], ["/transfer", "Transfer"]]],
   ["Kelola", [["/dompet", "Dompet"], ["/kategori", "Kategori"], ["/budget", "Budget"], ["/laporan", "Laporan"]]],
   ["Kekayaan", [["/aset", "Aset"], ["/utang", "Utang & Piutang"], ["/berulang", "Berulang"]]],
-  ["Keluarga", [["/anggota", "Anggota"], ["/notifikasi", "Notifikasi"], ["/audit", "Audit"], ["/pengaturan", "Pengaturan"]]],
+  ["Keluarga", [["/grup", "Grup"], ["/anggota", "Anggota"], ["/notifikasi", "Notifikasi"], ["/audit", "Audit"], ["/pengaturan", "Pengaturan"]]],
 ];
 /** Catatan pribadi tidak punya anggota/undangan, jadi menu "Anggota" disembunyikan. */
 const groupsFor = (ledger: Ledger): typeof GROUPS => ledger === "personal"
@@ -38,8 +61,8 @@ function ThemeButton() {
   );
 }
 
-type Props = { unread: number; signOut: () => Promise<void>; wallets: Opt[]; cats: CatOpt[]; budgets: BudgetOpt[]; ledger: Ledger; canPersonal: boolean; switchLedger: (fd: FormData) => Promise<void>; children: React.ReactNode };
-export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, canPersonal, switchLedger, children }: Props) {
+type Props = { unread: number; signOut: () => Promise<void>; wallets: Opt[]; cats: CatOpt[]; budgets: BudgetOpt[]; ledger: Ledger; ledgers: LedgerOpt[]; switchLedger: (fd: FormData) => Promise<void>; children: React.ReactNode };
+export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, ledgers, switchLedger, children }: Props) {
   const path = usePathname();
   const [menu, setMenu] = useState(false), [tx, setTx] = useState(false);
   const [ask, setAsk] = useState<{ title: string; message?: string; label?: string; tone: "danger" | "default"; btn: HTMLButtonElement } | null>(null);
@@ -71,7 +94,7 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, canPer
     <div className="shell" data-ledger={ledger}>
       <aside className="side">
         <Link href="/dashboard" className="brand">{brand}</Link>
-        {canPersonal && <LedgerSwitch ledger={ledger} action={switchLedger} />}
+        <LedgerPicker ledgers={ledgers} action={switchLedger} />
         {canTx && <button type="button" className="newtx" data-open-tx><Icon n="plus" /> Transaksi</button>}
         <nav className="nav">{links()}</nav>
         <div className="side-foot"><ThemeButton /><form action={signOut}><button className="ghost" data-confirm="Anda perlu masuk lagi untuk membuka data keuangan." data-confirm-title="Keluar dari akun?" data-confirm-label="Keluar" data-confirm-tone="default">Keluar</button></form></div>
@@ -90,7 +113,7 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, canPer
       {menu && (
         <div className="sheet" onClick={() => setMenu(false)}>
           <div className="panel" onClick={(e) => e.stopPropagation()}>
-            {canPersonal && <LedgerSwitch ledger={ledger} action={switchLedger} />}
+            <LedgerPicker ledgers={ledgers} action={switchLedger} />
             <nav className="nav">{links(() => setMenu(false))}</nav>
             <form action={signOut} style={{ marginTop: 16 }}><button className="ghost" style={{ width: "100%" }} data-confirm="Anda perlu masuk lagi untuk membuka data keuangan." data-confirm-title="Keluar dari akun?" data-confirm-label="Keluar" data-confirm-tone="default">Keluar</button></form>
           </div>
