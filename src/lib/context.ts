@@ -55,8 +55,9 @@ export const getOptionalCtx = cache(async () => {
   if (!first) return null; // belum punya grup & belum punya catatan pribadi
 
   const want = (await cookies()).get(LEDGER_COOKIE)?.value;
-  const preferredFamily = want && want !== "personal" ? groups.find((g) => g.family_id === want) ?? null : null;
-  const active = want === "personal" && personal ? personal : preferredFamily ?? personal ?? groups[0];
+  const preferredFamily = want && want !== "personal" ? groups.find((g) => g.family_id === want) : undefined;
+  // `first` memastikan active selalu ada, termasuk saat membership belum memiliki grup.
+  const active = (want === "personal" && personal ? personal : preferredFamily ?? personal ?? groups[0]) ?? first;
   const ledgers: LedgerOpt[] = [
     { key: "personal", label: "Catatan pribadi", kind: "personal", role: personal ? "owner" : null, active: active === personal },
     ...groups.map((g): LedgerOpt => ({ key: g.family_id, label: g.name, kind: "family", role: g.role, active: g === active })),
