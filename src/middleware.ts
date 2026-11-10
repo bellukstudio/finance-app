@@ -14,4 +14,7 @@ export async function middleware(req: NextRequest) {
   if (!user && !open) { const u = new URL("/login", req.url); u.searchParams.set("next", req.nextUrl.pathname); return NextResponse.redirect(u); }
   return res;
 }
-export const config = { matcher: ["/((?!_next|favicon.ico).*)"] };
+// sw.js, manifest.json & ikon PWA dikecualikan: harus bisa diambil tanpa sesi/cookie,
+// kalau tidak browser dapat redirect ke /login saat registrasi service worker — dan
+// spesifikasi Service Worker melarang script resource yang di-redirect (SecurityError).
+export const config = { matcher: ["/((?!_next|favicon.ico|sw\\.js|manifest\\.json|icon-192\\.png|icon-512\\.png|icon-maskable-512\\.png|apple-touch-icon\\.png).*)"] };
