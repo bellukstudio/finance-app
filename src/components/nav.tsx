@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
+import { ConfirmDialog } from "./confirm-dialog";
 import { TxModal, type BudgetOpt, type CatOpt, type Opt } from "./tx-modal";
 
 const GROUPS: [string, [string, string][]][] = [
@@ -26,6 +27,19 @@ type Props = { unread: number; signOut: () => Promise<void>; wallets: Opt[]; cat
 export function AppNav({ unread, signOut, wallets, cats, budgets, children }: Props) {
   const path = usePathname();
   const [menu, setMenu] = useState(false), [tx, setTx] = useState(false);
+  const [ask, setAsk] = useState<{ title: string; message?: string; label?: string; tone: "danger" | "default"; btn: HTMLButtonElement } | null>(null);
+  // Tombol submit dengan data-confirm="pesan" memunculkan dialog konfirmasi sebelum form dikirim.
+  // Opsional: data-confirm-title, data-confirm-label, data-confirm-tone="default".
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-confirm]");
+      if (!btn || !btn.form || btn.disabled) return;
+      e.preventDefault(); e.stopPropagation();
+      const d = btn.dataset;
+      setAsk({ title: d.confirmTitle ?? d.confirm ?? "Lanjutkan?", message: d.confirmTitle ? d.confirm : undefined, label: d.confirmLabel, tone: d.confirmTone === "default" ? "default" : "danger", btn });
+    };
+    document.addEventListener("click", h, true); return () => document.removeEventListener("click", h, true);
+  }, []);
   const cur = (h: string) => (path === h || path.startsWith(h + "/") ? "page" : undefined);
   // Tombol mana pun di halaman dengan atribut data-open-tx membuka modal catat transaksi.
   useEffect(() => { const h = (e: MouseEvent) => { if ((e.target as HTMLElement).closest("[data-open-tx]")) { setMenu(false); setTx(true); } }; document.addEventListener("click", h); return () => document.removeEventListener("click", h); }, []);
@@ -43,7 +57,7 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, children }: Pr
         <Link href="/dashboard" className="brand">Family Finance</Link>
         {canTx && <button type="button" className="newtx" data-open-tx><Icon n="plus" /> Transaksi</button>}
         <nav className="nav">{links()}</nav>
-        <div className="side-foot"><ThemeButton /><form action={signOut}><button className="ghost">Keluar</button></form></div>
+        <div className="side-foot"><ThemeButton /><form action={signOut}><button className="ghost" data-confirm="Anda perlu masuk lagi untuk membuka data keluarga." data-confirm-title="Keluar dari akun?" data-confirm-label="Keluar" data-confirm-tone="default">Keluar</button></form></div>
       </aside>
       <div>
         <header className="topbar"><Link href="/dashboard" className="brand" style={{ padding: 0 }}>Family Finance</Link><ThemeButton /></header>
@@ -60,10 +74,12 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, children }: Pr
         <div className="sheet" onClick={() => setMenu(false)}>
           <div className="panel" onClick={(e) => e.stopPropagation()}>
             <nav className="nav">{links(() => setMenu(false))}</nav>
-            <form action={signOut} style={{ marginTop: 16 }}><button className="ghost" style={{ width: "100%" }}>Keluar</button></form>
+            <form action={signOut} style={{ marginTop: 16 }}><button className="ghost" style={{ width: "100%" }} data-confirm="Anda perlu masuk lagi untuk membuka data keluarga." data-confirm-title="Keluar dari akun?" data-confirm-label="Keluar" data-confirm-tone="default">Keluar</button></form>
           </div>
         </div>
       )}
+      {ask && <ConfirmDialog title={ask.title} message={ask.message} confirmLabel={ask.label ?? "Ya, lanjutkan"} tone={ask.tone} onCancel={() => setAsk(null)}
+        onConfirm={() => { const b = ask.btn; setAsk(null); b.form?.requestSubmit(b); }} />}
       {tx && <TxModal wallets={wallets} cats={cats} budgets={budgets} onClose={() => setTx(false)} />}
     </div>
   );

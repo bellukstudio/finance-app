@@ -45,6 +45,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     <div className="grid g2e">{(["expense", "income"] as const).map(t => { const items = cats?.filter(c => c.type === t) ?? [];
       return <section key={t} className="card"><div className="between"><h2 style={{ margin: 0 }}>{L[t]}</h2><span className={`pill ${t}`}>{items.length}</span></div>
         {!items.length ? <p className="muted">Belum ada kategori.</p> : <ul className="list">{items.map(c => <li key={c.id}><span className={c.parent_id ? "sub" : ""}>{c.parent_id ? "↳ " : ""}{c.name}</span>
-          {canManage(role) && <form action={remove}><input type="hidden" name="id" value={c.id} /><button className="danger sm">Hapus</button></form>}</li>)}</ul>}</section>; })}</div>
+          {canManage(role) && <form action={remove}><input type="hidden" name="id" value={c.id} /><button className="danger sm" data-confirm="Kategori yang masih dipakai transaksi mungkin tidak bisa dihapus." data-confirm-title="Hapus kategori ini?" data-confirm-label="Hapus">Hapus</button></form>}</li>)}</ul>}</section>; })}</div>
   </main>);
 }

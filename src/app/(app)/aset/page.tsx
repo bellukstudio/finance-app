@@ -53,6 +53,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
         <small>Perolehan {rupiah(Number(a.acquisition_value))} · <span className={gain >= 0 ? "inc" : "exp"}>{gain >= 0 ? "+" : "−"}{rupiah(Math.abs(gain))}</span></small>
         {canWrite(role) && <details className="more"><summary>Perbarui nilai</summary><form action={revalue} className="row"><input type="hidden" name="id" value={a.id} /><input name="val" type="number" step="0.01" placeholder="Nilai baru" required /><input name="d" type="date" defaultValue={todayJakarta()} required /><button className="sm">Simpan</button></form></details>}
         <details className="more"><summary>Riwayat nilai ({h.length})</summary><ul className="list">{h.map((v, i) => <li key={i}><span>{tanggal(v.valued_on)}</span><b>{rupiah(Number(v.value))}</b></li>)}</ul></details>
-        {canManage(role) && <div className="tx-actions"><form action={remove}><input type="hidden" name="id" value={a.id} /><button className="danger">Hapus</button></form></div>}</article>; })}</div>}
+        {canManage(role) && <div className="tx-actions"><form action={remove}><input type="hidden" name="id" value={a.id} /><button className="danger" data-confirm="Aset dan riwayat nilainya tidak akan dihitung lagi." data-confirm-title="Hapus aset ini?" data-confirm-label="Hapus">Hapus</button></form></div>}</article>; })}</div>}
   </main>);
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { removeBudget, saveBudget } from "@/app/(app)/budget/actions";
 import { budgetPercent, budgetStatus } from "@/lib/budget";
 import { rupiah } from "@/lib/format";
+import { ConfirmDialog } from "./confirm-dialog";
 import { Icon } from "./icons";
 import { MultiPick, type PickOpt } from "./multi-pick";
 
@@ -43,9 +44,10 @@ function BudgetModal({ initial, wallets, cats, today, onClose }: { initial: Budg
 }
 
 export function BudgetManager({ budgets, wallets, cats, canEdit, history, today }: { budgets: BudgetView[]; wallets: PickOpt[]; cats: PickOpt[]; canEdit: boolean; history: boolean; today: string }) {
-  const [modal, setModal] = useState<{ b: BudgetView | null } | null>(null), [open, setOpen] = useState<string | null>(null), [pending, start] = useTransition(), [err, setErr] = useState<string | null>(null);
+  const [modal, setModal] = useState<{ b: BudgetView | null } | null>(null), [open, setOpen] = useState<string | null>(null), [err, setErr] = useState<string | null>(null);
   const wn = new Map(wallets.map((w) => [w.id, w.name])), cn = new Map(cats.map((c) => [c.id, c.name]));
-  const del = (b: BudgetView) => { if (!confirm(`Hapus budget "${b.name}"?`)) return; start(async () => { const r = await removeBudget(b.id); if (!r.ok) setErr(r.error); }); };
+  const [toDel, setToDel] = useState<BudgetView | null>(null);
+  const del = async (b: BudgetView) => { const r = await removeBudget(b.id); setToDel(null); if (!r.ok) setErr(r.error); };
   return (
     <main>
       <div className="ph"><div><h1>Budget</h1><small>Monitor pengeluaran</small></div>
@@ -63,7 +65,7 @@ export function BudgetManager({ budgets, wallets, cats, canEdit, history, today 
                   <span className="ibs">
                     <button type="button" className="ib" aria-label="Lihat rincian" aria-expanded={open === b.id} onClick={() => setOpen(open === b.id ? null : b.id)}><Icon n="eye" /></button>
                     {canEdit && <><button type="button" className="ib" aria-label="Ubah budget" onClick={() => setModal({ b })}><Icon n="edit" /></button>
-                      <button type="button" className="ib del" aria-label="Hapus budget" disabled={pending} onClick={() => del(b)}><Icon n="trash" /></button></>}
+                      <button type="button" className="ib del" aria-label="Hapus budget" onClick={() => { setErr(null); setToDel(b); }}><Icon n="trash" /></button></>}
                   </span></div>
               </div>
               <div className="row2"><span className="used">{rupiah(b.used)} terpakai</span><small className="mono">dari {rupiah(total)}</small></div>
@@ -84,6 +86,7 @@ export function BudgetManager({ budgets, wallets, cats, canEdit, history, today 
                 </dl>)}
             </article>);
         })}</div>)}
+      {toDel && <ConfirmDialog tone="danger" title={`Hapus budget "${toDel.name}"?`} message="Budget ini akan dihapus dari daftar. Transaksi yang sudah tercatat tidak ikut terhapus." confirmLabel="Hapus budget" onCancel={() => setToDel(null)} onConfirm={() => del(toDel)} />}
       {modal && <BudgetModal initial={modal.b} wallets={wallets} cats={cats} today={today} onClose={() => setModal(null)} />}
     </main>
   );

@@ -64,8 +64,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         {list.map(t => <TxRow key={t.id} t={t} maps={maps}>
           <div className="tx-actions">
             {canWrite(role) && t.type !== "transfer" && <form action={dup}><input type="hidden" name="id" value={t.id} /><button className="ghost sm">Duplikasi</button></form>}
-            {canManage(role) && <form action={del}><input type="hidden" name="id" value={t.id} /><button className="danger sm">Hapus</button></form>}
-            {atts?.filter(x => x.transaction_id === t.id).map(x => <span key={x.id} className="tx-actions" style={{ margin: 0, padding: 0, border: 0 }}><a href={`/api/attachments/${x.id}`} target="_blank">Lihat nota</a><a href={`/api/attachments/${x.id}?dl=1`}>Unduh</a>{canManage(role) && <form action={`/api/attachments/${x.id}`} method="post"><button className="danger sm">Hapus nota</button></form>}</span>)}
+            {canManage(role) && <form action={del}><input type="hidden" name="id" value={t.id} /><button className="danger sm" data-confirm="Saldo wallet dan pemakaian budget akan menyesuaikan." data-confirm-title="Hapus transaksi ini?" data-confirm-label="Hapus">Hapus</button></form>}
+            {atts?.filter(x => x.transaction_id === t.id).map(x => <span key={x.id} className="tx-actions" style={{ margin: 0, padding: 0, border: 0 }}><a href={`/api/attachments/${x.id}`} target="_blank">Lihat nota</a><a href={`/api/attachments/${x.id}?dl=1`}>Unduh</a>{canManage(role) && <form action={`/api/attachments/${x.id}`} method="post"><button className="danger sm" data-confirm="File nota akan dihapus permanen." data-confirm-title="Hapus nota ini?" data-confirm-label="Hapus nota">Hapus nota</button></form>}</span>)}
             {canWrite(role) && <form action="/api/attachments" method="post" encType="multipart/form-data" className="tx-actions" style={{ margin: 0, padding: 0, border: 0 }}><input type="hidden" name="transaction_id" value={t.id} /><input type="file" name="file" accept="image/jpeg,image/png,image/webp,application/pdf" required /><button className="ghost sm">Unggah nota</button></form>}
           </div></TxRow>)}
       </section>;

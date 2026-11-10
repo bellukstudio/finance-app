@@ -48,6 +48,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <div className="between"><b>{w.name}</b><span className="pill">{KIND[w.kind]}{w.is_active ? "" : " · nonaktif"}</span></div>
       <div className="big2">{rupiah(b.get(w.id) ?? 0)}</div>
       {canManage(role) && <div className="tx-actions"><form action={toggle}><input type="hidden" name="id" value={w.id} /><input type="hidden" name="active" value={String(w.is_active)} /><button className="ghost">{w.is_active ? "Nonaktifkan" : "Aktifkan"}</button></form>
-        <form action={remove}><input type="hidden" name="id" value={w.id} /><button className="danger">Hapus</button></form></div>}</article>)}</div>}
+        <form action={remove}><input type="hidden" name="id" value={w.id} /><button className="danger" data-confirm="Dompet tidak akan muncul lagi di daftar dan saldo." data-confirm-title="Hapus dompet ini?" data-confirm-label="Hapus">Hapus</button></form></div>}</article>)}</div>}
   </main>);
 }

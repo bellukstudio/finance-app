@@ -256,3 +256,14 @@ input::placeholder{color:var(--muted)}
 .nota img{width:44px;height:44px;object-fit:cover;border-radius:8px;flex:none}
 .nota-ico{width:44px;height:44px;border-radius:8px;display:grid;place-items:center;background:var(--surface);color:var(--muted);flex:none}
 .nota-t{flex:1;min-width:0;display:grid}.nota-t b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.84rem}
+
+/* dialog konfirmasi */
+.cf-back{z-index:80}
+.modal.cf{max-width:380px;padding:24px 22px 20px;text-align:center;display:grid;gap:8px;justify-items:center}
+.cf-ico{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--warn-bg);color:var(--warn);margin-bottom:4px}
+.cf.danger .cf-ico{background:var(--expense-bg);color:var(--expense)}.cf-ico .ico{width:22px;height:22px}
+.cf h2{font-size:1.05rem;margin:0}.cf p{margin:0;font-size:.88rem;line-height:1.5}
+.cf-act{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:14px}
+.cf-act button{padding:.65rem}
+button.cf-danger{background:var(--expense);color:#fff}
+@media(max-width:860px){.modal.cf{border-radius:16px 16px 0 0;max-width:none;padding-bottom:calc(20px + env(safe-area-inset-bottom))}}
