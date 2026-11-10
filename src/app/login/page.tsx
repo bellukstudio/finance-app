@@ -10,5 +10,14 @@ async function signIn(fd: FormData) {
 }
 export default async function Login({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
-  return <form action={signIn}><input type="hidden" name="next" value={next ?? "/dashboard"} /><h1>Family Finance Manager</h1><button type="submit">Masuk dengan Google</button></form>;
+  return (
+    <div className="login-wrap">
+      <form action={signIn} className="card login-card">
+        <input type="hidden" name="next" value={next ?? "/dashboard"} />
+        <h1>Family Finance Manager</h1>
+        <p>Kelola keuangan keluarga bersama.</p>
+        <button type="submit">Masuk dengan Google</button>
+      </form>
+    </div>
+  );
 }
