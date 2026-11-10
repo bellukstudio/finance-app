@@ -44,13 +44,20 @@ const getMemberships = cache(async (): Promise<Membership[]> => {
 export const getOptionalCtx = cache(async () => {
   const { sb, user } = await getAuth();
   if (!user) return null;
-  const ms = await getMemberships();
+
+  // Selalu query data terbaru dari database untuk mencegah stale cache setelah switch ke personal
+  // atau setelah membuat/menampilkan catatan pribadi pada mobile. Cache hanya perlu membatasi
+  // panggilan dalam satu request, bukan menyimpan lebih lama dari itu.
+  const ms = await fetchMemberships(sb, user.id);
   const groups = ms.filter((m) => m.kind === "family");
-  const first = groups[0];
-  if (!first) return null;  // belum ikut grup mana pun: dashboard menampilkan form pembuatan
   const personal = ms.find((m) => m.kind === "personal" && m.role === "owner");
+  const first = groups[0] ?? personal ?? null;
+  if (!first) return null; // belum punya grup & belum punya catatan pribadi
+
   const want = (await cookies()).get(LEDGER_COOKIE)?.value;
-  const active = want === "personal" && personal ? personal : groups.find((g) => g.family_id === want) ?? first;
+  const preferredFamily = want && want !== "personal" ? groups.find((g) => g.family_id === want) : undefined;
+  // `first` memastikan active selalu ada, termasuk saat membership belum memiliki grup.
+  const active = (want === "personal" && personal ? personal : preferredFamily ?? personal ?? groups[0]) ?? first;
   const ledgers: LedgerOpt[] = [
     { key: "personal", label: "Catatan pribadi", kind: "personal", role: personal ? "owner" : null, active: active === personal },
     ...groups.map((g): LedgerOpt => ({ key: g.family_id, label: g.name, kind: "family", role: g.role, active: g === active })),
@@ -59,7 +66,7 @@ export const getOptionalCtx = cache(async () => {
     sb, user, familyId: active.family_id, role: active.role, ledger: active.kind, ledgerName: active.name, ledgers,
     /** Setiap user yang sudah punya grup boleh punya catatan pribadi sendiri (dibuat saat pertama dibuka). */
     canPersonal: true,
-    sharedFamilyId: (active.kind === "family" ? active : first).family_id,
+    sharedFamilyId: (active.kind === "family" ? active : (groups[0] ?? active)).family_id,
   };
 });
 
