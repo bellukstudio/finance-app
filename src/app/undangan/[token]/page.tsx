@@ -9,7 +9,7 @@ async function accept(fd: FormData) {
   const token = String(fd.get("token"));
   const sb = await supabaseServer();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect(`/masuk?next=/undangan/${encodeURIComponent(token)}`);
+  if (!user) redirect(`/login?next=/undangan/${encodeURIComponent(token)}`);
   const { error } = await sb.rpc("accept_invitation", { tok: token });
   redirect(error ? "/undangan/gagal" : "/dashboard");
 }
