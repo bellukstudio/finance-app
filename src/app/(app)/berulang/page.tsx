@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { pgMessage } from "@/lib/errors";
 import { rupiah, tanggal } from "@/lib/format";
 import { todayJakarta } from "@/lib/period";
+import { DataTable, type DTRow } from "@/components/data-table";
 
 const FREQ: Record<string, string> = { daily: "Harian", weekly: "Mingguan", monthly: "Bulanan", yearly: "Tahunan" };
 const R = z.object({ type: z.enum(["income","expense"]), wallet_id: z.string().uuid(), category_id: z.string().uuid(), amount: z.coerce.number().positive(), description: z.string().max(200).optional(),
@@ -40,6 +41,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const [{ data: rs }, { data: ws }, { data: cats }] = await Promise.all([sb.from("recurring_transactions").select("*").eq("family_id", familyId).is("deleted_at", null).order("start_date"),
     sb.from("wallets").select("id,name").eq("family_id", familyId).eq("is_active", true).is("deleted_at", null), sb.from("categories").select("id,name,type").eq("family_id", familyId).eq("is_active", true).is("deleted_at", null)]);
   const wn = new Map(ws?.map(w => [w.id, w.name])), cn = new Map(cats?.map(c => [c.id, c.name]));
+  const rows: DTRow[] = (rs ?? []).map(r => { const nm = String(r.description || cn.get(r.category_id) || "-"), wl = wn.get(r.wallet_id) ?? "-", fr = `Tiap ${r.interval_n} ${FREQ[r.frequency]}`, amt = Number(r.amount), st = r.is_active ? "Aktif" : "Nonaktif";
+    return { id: r.id, search: `${nm} ${wl} ${fr} ${st}`, sort: { name: nm, amount: r.type === "income" ? amt : -amt, wallet: wl, freq: fr, start: r.start_date, end: r.end_date ?? "9999", status: st },
+      cells: { name: <span className="strong">{nm}</span>, amount: <span className={r.type === "income" ? "inc" : "exp"}>{r.type === "income" ? "+" : "−"}{rupiah(amt)}</span>, wallet: wl, freq: fr, start: tanggal(r.start_date), end: r.end_date ? tanggal(r.end_date) : "-",
+        status: <span className="pill">{st}</span>, act: <form action={toggle}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="active" value={String(r.is_active)} /><button className="ghost sm">{r.is_active ? "Nonaktifkan" : "Aktifkan"}</button></form> } }; });
   return (<main><h1>Transaksi Berulang</h1>{e && <p role="status">{e}</p>}
     <p><small>Dijalankan otomatis tiap hari 00:05 WIB (pg_cron). Aman dijalankan berulang: satu tanggal hanya membuat satu transaksi.</small></p>
     {canWrite(role) && <form action={create}><select name="type"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select>
@@ -49,7 +54,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <select name="frequency">{Object.entries(FREQ).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select><input name="interval_n" type="number" min={1} defaultValue={1} title="Setiap n periode" />
       <input name="start_date" type="date" defaultValue={todayJakarta()} required /><input name="end_date" type="date" title="Berakhir (opsional)" /><button>Tambah</button></form>}
     {canManage(role) && <form action={runNow}><button>Jalankan sekarang</button></form>}
-    {!rs?.length && <p>Belum ada transaksi berulang.</p>}
-    <ul>{rs?.map(r => <li key={r.id}>{r.description || cn.get(r.category_id)} — {r.type === "income" ? "+" : "−"}{rupiah(Number(r.amount))} · {wn.get(r.wallet_id)} · tiap {r.interval_n} {FREQ[r.frequency]} · mulai {tanggal(r.start_date)}{r.end_date ? `, sampai ${tanggal(r.end_date)}` : ""} {r.is_active ? "" : "[nonaktif]"}
-      {canWrite(role) && <form action={toggle} style={{ display: "inline" }}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="active" value={String(r.is_active)} /> <button>{r.is_active ? "Nonaktifkan" : "Aktifkan"}</button></form>}</li>)}</ul></main>);
+    <DataTable label="Transaksi berulang" rows={rows} empty="Belum ada transaksi berulang." defaultSort={{ key: "start", dir: "asc" }}
+      columns={[{ key: "name", header: "Deskripsi", sortable: true }, { key: "amount", header: "Nominal", align: "right", sortable: true }, { key: "wallet", header: "Dompet", sortable: true }, { key: "freq", header: "Jadwal", sortable: true },
+        { key: "start", header: "Mulai", sortable: true }, { key: "end", header: "Sampai", sortable: true }, { key: "status", header: "Status", sortable: true }, ...(canWrite(role) ? [{ key: "act", header: "Aksi" }] : [])]} /></main>);
 }

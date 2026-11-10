@@ -291,3 +291,38 @@ a.auth-btn{display:inline-flex;align-items:center;justify-content:center;backgro
 .shell[data-ledger=personal] .topbar{border-top:3px solid var(--primary)}
 .ledger-tag{display:inline-flex;align-items:center;gap:4px;font-size:.74rem;font-weight:700;color:var(--primary);border:1px solid var(--primary);border-radius:99px;padding:1px 9px}
 .ledger-tag .ico{width:13px;height:13px}
+
+/* ===== DataTable ===== */
+.dt{display:grid;gap:10px;min-width:0}
+.dt-bar,.dt-foot{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.dt-search{flex:1;min-width:180px;max-width:320px}
+.dt-count{font-size:.76rem;color:var(--muted);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.dt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+.dt-scroll table{display:table;width:100%;border:0;border-radius:0;background:transparent;border-collapse:collapse}
+.dt-scroll thead th{background:var(--surface-2);font-size:.74rem;font-weight:650;color:var(--muted);padding:9px 14px;border-bottom:1px solid var(--line)}
+.dt-scroll td{padding:10px 14px;vertical-align:middle;font-variant-numeric:tabular-nums}
+.dt-scroll tbody tr:hover td{background:color-mix(in srgb,var(--surface-2) 55%,transparent)}
+.dt-scroll .r{text-align:right}.dt-scroll td.r{font-family:var(--mono)}
+.dt-scroll td.wrap{white-space:normal;min-width:200px}
+.dt-empty{text-align:center;color:var(--muted);padding:22px 14px!important}
+.dt-sort{background:transparent;color:inherit;padding:0;border-radius:4px;font:inherit;font-weight:inherit;gap:4px}
+.dt-sort:hover{filter:none;color:var(--text)}
+.dt-sort .ico{width:12px;height:12px;opacity:.35}
+th[aria-sort=ascending] .dt-sort .ico{opacity:1;transform:rotate(180deg)}th[aria-sort=descending] .dt-sort .ico{opacity:1}
+th[aria-sort=ascending],th[aria-sort=descending]{color:var(--text)}
+.dt-pg{display:flex;gap:8px;align-items:center}.dt-pg select{padding:.3rem .5rem;font-size:.82rem}
+.dt-pg button{padding:.3rem .5rem}.dt-pg button .ico{width:14px;height:14px}.dt-pg button:disabled{opacity:.4;cursor:default}
+.dt td form{display:inline-flex;gap:6px;align-items:center}
+.dt td select{padding:.3rem .5rem;font-size:.85rem}
+.dt td button{padding:.3rem .7rem;font-size:.85rem}
+.dt td .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dt td .strong{font-weight:650}
+h2.sec{margin:6px 0 -6px}
+
+/* ===== Form transfer ===== */
+.xfer{display:grid;gap:16px;max-width:640px;padding:20px;grid-template-columns:minmax(0,1fr)}
+.xfer .two{align-items:end}
+.xfer .fld>span{min-height:1.1em}
+.xfer .fld input,.xfer .fld select{min-height:42px}
+.xfer .fld input[type=date]{min-width:0}
+.xfer-sub{font-size:.78rem;color:var(--muted);margin:0}

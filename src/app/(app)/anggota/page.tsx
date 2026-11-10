@@ -6,6 +6,7 @@ import { pgMessage } from "@/lib/errors";
 import { rateLimit } from "@/lib/rate-limit";
 import { tanggal } from "@/lib/format";
 import { getOrigin } from "@/lib/origin";
+import { DataTable, type DTRow } from "@/components/data-table";
 
 const ROLES = ["admin", "member", "viewer"] as const;
 async function invite(fd: FormData) {
@@ -49,10 +50,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const [{ data: ms }, { data: ps }, { data: inv }] = await Promise.all([sb.from("family_members").select("user_id,role,created_at").eq("family_id", familyId).is("deleted_at", null),
     sb.from("profiles").select("id,full_name"), sb.from("family_invitations").select("id,role,expires_at").eq("family_id", familyId).eq("status", "pending").gt("expires_at", new Date().toISOString())]);
   const pn = new Map(ps?.map(p => [p.id, p.full_name]));
+  const memberRows: DTRow[] = (ms ?? []).map(m => { const nm = pn.get(m.user_id) ?? m.user_id;
+    return { id: m.user_id, search: `${nm} ${m.role}`, sort: { name: nm, role: m.role }, cells: { name: <span className="strong">{nm}{m.user_id === user.id && <small className="muted"> (Anda)</small>}</span>, role: <span className="pill">{m.role}</span>,
+      act: <div className="acts">{role === "owner" && m.role !== "owner" && <form action={changeRole}><input type="hidden" name="uid" value={m.user_id} /><select name="r" defaultValue={m.role} aria-label="Role">{ROLES.map(r => <option key={r}>{r}</option>)}</select><button className="ghost sm">Ubah role</button></form>}
+        {canManage(role) && m.role !== "owner" && <form action={removeMember}><input type="hidden" name="uid" value={m.user_id} /><button className="danger sm" data-confirm="Anggota ini tidak akan bisa lagi mengakses data keluarga." data-confirm-title="Keluarkan anggota ini?" data-confirm-label="Keluarkan">Keluarkan</button></form>}</div> } }; });
+  const invRows: DTRow[] = (inv ?? []).map(i => ({ id: i.id, search: `${i.role} ${tanggal(i.expires_at)}`, sort: { role: i.role, exp: i.expires_at }, cells: { role: <span className="pill">{i.role}</span>, exp: tanggal(i.expires_at),
+    act: <form action={revoke}><input type="hidden" name="id" value={i.id} /><button className="danger sm" data-confirm="Link undangan ini tidak bisa dipakai lagi." data-confirm-title="Cabut undangan ini?" data-confirm-label="Cabut">Cabut</button></form> } }));
   return (<main><h1>Anggota Keluarga</h1>{e && <p role="status" style={{ wordBreak: "break-all" }}>{e}</p>}
-    <ul>{ms?.map(m => <li key={m.user_id}>{pn.get(m.user_id) ?? m.user_id} — <b>{m.role}</b> {m.user_id === user.id && "(Anda)"}
-      {role === "owner" && m.role !== "owner" && <form action={changeRole} style={{ display: "inline" }}> <input type="hidden" name="uid" value={m.user_id} /><select name="r" defaultValue={m.role}>{ROLES.map(r => <option key={r}>{r}</option>)}</select><button>Ubah role</button></form>}
-      {canManage(role) && m.role !== "owner" && <form action={removeMember} style={{ display: "inline" }}> <input type="hidden" name="uid" value={m.user_id} /><button data-confirm="Anggota ini tidak akan bisa lagi mengakses data keluarga." data-confirm-title="Keluarkan anggota ini?" data-confirm-label="Keluarkan">Keluarkan</button></form>}</li>)}</ul>
+    <DataTable label="Anggota keluarga" rows={memberRows} empty="Belum ada anggota."
+      columns={[{ key: "name", header: "Nama", sortable: true }, { key: "role", header: "Role", sortable: true }, ...(canManage(role) ? [{ key: "act", header: "Aksi" }] : [])]} />
     {canManage(role) && <><h2>Undang anggota</h2><form action={invite}><select name="role">{ROLES.map(r => <option key={r}>{r}</option>)}</select><button>Buat link undangan</button></form>
-      <h3>Undangan aktif</h3><ul>{inv?.map(i => <li key={i.id}>{i.role}, berlaku sampai {tanggal(i.expires_at)} <form action={revoke} style={{ display: "inline" }}><input type="hidden" name="id" value={i.id} /><button data-confirm="Link undangan ini tidak bisa dipakai lagi." data-confirm-title="Cabut undangan ini?" data-confirm-label="Cabut">Cabut</button></form></li>)}</ul></>}</main>);
+      <h2 className="sec">Undangan aktif</h2>
+      <DataTable label="Undangan aktif" rows={invRows} empty="Tidak ada undangan aktif."
+        columns={[{ key: "role", header: "Role", sortable: true }, { key: "exp", header: "Berlaku sampai", sortable: true }, { key: "act", header: "Aksi" }]} /></>}</main>);
 }

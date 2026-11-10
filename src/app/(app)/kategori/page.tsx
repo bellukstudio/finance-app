@@ -2,6 +2,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { getCtx, canManage, back } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
+import { DataTable, type DTRow } from "@/components/data-table";
 
 const C = z.object({ name: z.string().trim().min(1).max(60), type: z.enum(["income","expense"]), parent_id: z.string().uuid().optional().or(z.literal("")), color: z.string().max(20).optional() });
 
@@ -35,6 +36,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const { sb, role, familyId } = await getCtx();
   const { data: cats } = await sb.from("categories").select("id,name,type,parent_id").eq("family_id", familyId).is("deleted_at", null).order("name");
   const parents = cats?.filter(c => !c.parent_id) ?? [];
+  const pname = new Map((cats ?? []).map(c => [c.id, c.name]));
   const L = { expense: "Pengeluaran", income: "Pemasukan" } as const;
   return (<main>
     <div className="head"><div><h1>Kategori</h1><small>Kelompokkan transaksi agar laporan lebih jelas</small></div></div>
@@ -44,7 +46,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <select name="parent_id"><option value="">Tanpa induk</option>{parents.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type})</option>)}</select><button>Tambah</button></form>}
     <div className="grid g2e">{(["expense", "income"] as const).map(t => { const items = cats?.filter(c => c.type === t) ?? [];
       return <section key={t} className="card"><div className="between"><h2 style={{ margin: 0 }}>{L[t]}</h2><span className={`pill ${t}`}>{items.length}</span></div>
-        {!items.length ? <p className="muted">Belum ada kategori.</p> : <ul className="list">{items.map(c => <li key={c.id}><span className={c.parent_id ? "sub" : ""}>{c.parent_id ? "↳ " : ""}{c.name}</span>
-          {canManage(role) && <form action={remove}><input type="hidden" name="id" value={c.id} /><button className="danger sm" data-confirm="Kategori yang masih dipakai transaksi mungkin tidak bisa dihapus." data-confirm-title="Hapus kategori ini?" data-confirm-label="Hapus">Hapus</button></form>}</li>)}</ul>}</section>; })}</div>
+        <DataTable label={`Kategori ${L[t]}`} empty="Belum ada kategori." defaultSort={{ key: "name", dir: "asc" }} pageSize={10}
+          columns={[{ key: "name", header: "Nama", sortable: true }, { key: "parent", header: "Induk", sortable: true }, ...(canManage(role) ? [{ key: "act", header: "Aksi" }] : [])]}
+          rows={items.map((c): DTRow => { const par = c.parent_id ? pname.get(c.parent_id) ?? "-" : "-";
+            return { id: c.id, search: `${c.name} ${par}`, sort: { name: c.name, parent: par }, cells: { name: <span className={c.parent_id ? "sub" : "strong"}>{c.parent_id ? "↳ " : ""}{c.name}</span>, parent: par === "-" ? <span className="muted">-</span> : par,
+              act: <form action={remove}><input type="hidden" name="id" value={c.id} /><button className="danger sm" data-confirm="Kategori yang masih dipakai transaksi mungkin tidak bisa dihapus." data-confirm-title="Hapus kategori ini?" data-confirm-label="Hapus">Hapus</button></form> } }; })} /></section>; })}</div>
   </main>);
 }
