@@ -1,5 +1,5 @@
 /* ===== Design tokens ===== */
-:root{color-scheme:light;--bg:#f3f4f8;--surface:#fff;--surface-2:#eceef4;--text:#161a24;--muted:#6a7386;--line:#dfe3ec;--primary:#6d4fe0;--primary-ink:#fff;--income:#12895a;--income-bg:#e2f4ec;--expense:#d23a4d;--expense-bg:#fbe7ea;--transfer:#2c6fd6;--transfer-bg:#e4edfb;--warn:#b7791f;--warn-bg:#fbf0dc;--radius:12px;--mono:var(--font-mono),ui-monospace,monospace}
+:root{color-scheme:light;--bg:#f3f4f8;--surface:#fff;--surface-2:#eceef4;--text:#161a24;--muted:#6a7386;--line:#dfe3ec;--primay:#060A12;--primary-ink:#fff;--income:#12895a;--income-bg:#e2f4ec;--expense:#d23a4d;--expense-bg:#fbe7ea;--transfer:#2c6fd6;--transfer-bg:#e4edfb;--warn:#b7791f;--warn-bg:#fbf0dc;--radius:12px;--mono:var(--font-mono),ui-monospace,monospace}
 :root[data-theme=dark]{color-scheme:dark;--bg:#0c1016;--surface:#141a22;--surface-2:#1b232d;--text:#e6ebf2;--muted:#8a97a8;--line:#263140;--primary:#a78bfa;--primary-ink:#17112e;--income:#4fd08f;--income-bg:#14281f;--expense:#ff6f7d;--expense-bg:#2d171c;--transfer:#62adff;--transfer-bg:#142338;--warn:#f2bb4e;--warn-bg:#2a2112}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font),system-ui,sans-serif;font-size:15px;line-height:1.5}
