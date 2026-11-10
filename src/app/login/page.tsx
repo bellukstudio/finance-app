@@ -14,8 +14,8 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
     <div className="login-wrap">
       <form action={signIn} className="card login-card">
         <input type="hidden" name="next" value={next ?? "/dashboard"} />
-        <h1>Family Finance Manager</h1>
-        <p>Kelola keuangan keluarga bersama.</p>
+        <h1>Family Finance</h1>
+        <p>Kelola keuangan keluarga dalam satu tempat.</p>
         <button type="submit">Masuk dengan Google</button>
       </form>
     </div>

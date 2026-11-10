@@ -1,19 +1,63 @@
 "use client";
-import { Bar, BarChart, CartesianGrid, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
-const COLORS = ["#2563eb","#16a34a","#f59e0b","#dc2626","#9333ea","#0891b2","#db2777","#65a30d","#ea580c","#4b5563"];
-const fmt = (n: number) => "Rp" + new Intl.NumberFormat("id-ID").format(n);
+import { useState } from "react";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+
+const COLORS = ["#2f5bea", "#12a37f", "#f59e0b", "#e5484d", "#8e4ec6", "#0891b2", "#db2777", "#65a30d"];
+const idr = (n: number) => "Rp" + new Intl.NumberFormat("id-ID").format(n);
+const compact = (v: number) => new Intl.NumberFormat("id-ID", { notation: "compact" }).format(v);
+const tip = { contentStyle: { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10, color: "var(--text)" }, cursor: { fill: "var(--surface-2)" } };
+const axis = { tick: { fill: "var(--muted)", fontSize: 12 }, tickLine: false, axisLine: false } as const;
+const Empty = ({ t }: { t: string }) => <p className="muted" style={{ padding: "40px 0", textAlign: "center" }}>{t}</p>;
+
 export function IncomeExpenseChart({ data }: { data: { label: string; income: number; expense: number }[] }) {
-  if (!data.length) return <p>Belum ada data pada periode ini.</p>;
-  return <div style={{ height: 260 }}><ResponsiveContainer><BarChart data={data}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis tickFormatter={(v) => new Intl.NumberFormat("id-ID", { notation: "compact" }).format(v)} />
-    <Tooltip formatter={(v: number) => fmt(v)} /><Legend /><Bar dataKey="income" name="Pemasukan" fill="#16a34a" /><Bar dataKey="expense" name="Pengeluaran" fill="#dc2626" /></BarChart></ResponsiveContainer></div>;
+  if (!data.length) return <Empty t="Belum ada data pada periode ini." />;
+  return (
+    <div style={{ height: 280 }}><ResponsiveContainer><BarChart data={data} barGap={4}>
+      <CartesianGrid vertical={false} stroke="var(--line)" /><XAxis dataKey="label" {...axis} /><YAxis tickFormatter={compact} width={48} {...axis} />
+      <Tooltip {...tip} formatter={(v: number) => idr(v)} />
+      <Bar dataKey="income" name="Pemasukan" fill="var(--income)" radius={[6, 6, 0, 0]} />
+      <Bar dataKey="expense" name="Pengeluaran" fill="var(--expense)" radius={[6, 6, 0, 0]} />
+    </BarChart></ResponsiveContainer></div>
+  );
 }
+
 export function CategoryPie({ data }: { data: { name: string; value: number }[] }) {
-  if (!data.length) return <p>Belum ada data pada periode ini.</p>;
-  return <div style={{ height: 260 }}><ResponsiveContainer><PieChart><Pie data={data} dataKey="value" nameKey="name" outerRadius={90}>{data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie>
-    <Tooltip formatter={(v: number) => fmt(v)} /><Legend /></PieChart></ResponsiveContainer></div>;
+  const [active, setActive] = useState<number | null>(null);
+  if (!data.length) return <Empty t="Belum ada pengeluaran pada periode ini." />;
+  const total = data.reduce((a, d) => a + d.value, 0);
+  const sel = active === null ? null : data[active];
+  return (
+    <div>
+      <div style={{ height: 210, position: "relative" }}>
+        <ResponsiveContainer><PieChart>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius="62%" outerRadius="92%" paddingAngle={2} stroke="none"
+            onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)}>
+            {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} opacity={active === null || active === i ? 1 : 0.35} />)}
+          </Pie>
+        </PieChart></ResponsiveContainer>
+        <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none", textAlign: "center" }}>
+          <div><small>{sel ? sel.name : "Total"}</small><div><b>{idr(sel ? sel.value : total)}</b></div></div>
+        </div>
+      </div>
+      <ul className="list" style={{ marginTop: 8 }}>
+        {data.slice(0, 6).map((d, i) => (
+          <li key={d.name} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)}>
+            <span><i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], marginRight: 8 }} />{d.name}</span>
+            <span className="muted">{Math.round((d.value / total) * 100)}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
+
 export function WalletBars({ data }: { data: { name: string; value: number }[] }) {
-  if (!data.length) return <p>Belum ada dompet.</p>;
-  return <div style={{ height: 260 }}><ResponsiveContainer><BarChart data={data}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis tickFormatter={(v) => new Intl.NumberFormat("id-ID", { notation: "compact" }).format(v)} />
-    <Tooltip formatter={(v: number) => fmt(v)} /><Bar dataKey="value" name="Saldo" fill="#2563eb" /></BarChart></ResponsiveContainer></div>;
+  if (!data.length) return <Empty t="Belum ada dompet." />;
+  return (
+    <div style={{ height: 240 }}><ResponsiveContainer><BarChart data={data} layout="vertical" margin={{ left: 8 }}>
+      <CartesianGrid horizontal={false} stroke="var(--line)" /><XAxis type="number" tickFormatter={compact} {...axis} /><YAxis type="category" dataKey="name" width={90} {...axis} />
+      <Tooltip {...tip} formatter={(v: number) => idr(v)} />
+      <Bar dataKey="value" name="Saldo" fill="var(--primary)" radius={[0, 6, 6, 0]} />
+    </BarChart></ResponsiveContainer></div>
+  );
 }

@@ -23,7 +23,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const { data: { user } } = await sb0.auth.getUser();
   if (!user) redirect("/login");
   const { data: mem } = await sb0.from("family_members").select("family_id").is("deleted_at", null).limit(1).maybeSingle();
-  if (!mem) return <form action={createFamily}><h1>Buat Keluarga</h1><input name="name" placeholder="Nama keluarga" required /><button>Buat</button></form>;
+  if (!mem) return <form action={createFamily} className="card stack" style={{ maxWidth: 420, display: "grid", gap: 12 }}><h1>Buat Keluarga</h1><input name="name" placeholder="Nama keluarga" required /><button>Buat</button></form>;
   const { sb, familyId } = await getCtx();
   const p = resolvePeriod(sp.period, sp.from, sp.to);
   const [{ data: s }, { data: wallets }, { data: series }, { data: cats }, { data: bu }, { data: recent }] = await Promise.all([
@@ -36,16 +36,29 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const x = (s ?? {}) as Record<string, number>;
   const budget = (bu ?? []).reduce((a, r) => a + Number(r.budget), 0), used = (bu ?? []).reduce((a, r) => a + Number(r.used), 0);
   const worth = (x.total_balance ?? 0) + (x.assets ?? 0) - (x.debts ?? 0);
-  const card = (l: string, v: string) => <div style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12, minWidth: 150 }}><small>{l}</small><div><b>{v}</b></div></div>;
-  return (<main><h1>Dashboard</h1><PeriodForm current={p.key} from={p.from} to={p.to} />
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {card("Total saldo", rupiah(x.total_balance ?? 0))}{card("Pemasukan", rupiah(x.income ?? 0))}{card("Pengeluaran", rupiah(x.expense ?? 0))}
-      {card("Selisih", rupiah((x.income ?? 0) - (x.expense ?? 0)))}{card("Aset", rupiah(x.assets ?? 0))}{card("Utang", rupiah(x.debts ?? 0))}{card("Net worth", rupiah(worth))}
-      {card("Budget terpakai", budget ? `${rupiah(used)} / ${rupiah(budget)} (${STATUS_LABEL[budgetStatus(used, budget)]})` : "Belum ada budget")}
-      {card("Sisa budget", budget ? rupiah(budget - used) : "-")}</div>
-    <p><small>Net worth = saldo dompet + aset − utang.</small></p>
-    <h2>Pemasukan vs Pengeluaran</h2><IncomeExpenseChart data={((series ?? []) as Row[]).map(r => ({ label: tanggal(String(r.bucket)), income: Number(r.income), expense: Number(r.expense) }))} />
-    <h2>Pengeluaran per kategori</h2><CategoryPie data={((cats ?? []) as Row[]).map(r => ({ name: String(r.name), value: Number(r.total) }))} />
-    <h2>Saldo per dompet</h2><WalletBars data={(wallets ?? []).map(w => ({ name: w.name, value: Number(w.balance) }))} />
-    <h2>Transaksi terbaru</h2>{!recent?.length ? <p>Belum ada transaksi.</p> : <ul>{recent.map(t => <li key={t.id}>{tanggal(t.date)} · {t.type} · {rupiah(Number(t.amount))} · {t.description}</li>)}</ul>}</main>);
+  const net = (x.income ?? 0) - (x.expense ?? 0);
+  const pct = budget ? Math.min(100, Math.round((used / budget) * 100)) : 0;
+  const stat = (l: string, v: number, c = "") => <div className="card stat"><small>{l}</small><b className={c}>{rupiah(v)}</b></div>;
+  return (<main>
+    <div className="head"><div><h1>Dashboard</h1><small>Ringkasan keuangan keluarga</small></div><PeriodForm current={p.key} from={p.from} to={p.to} /></div>
+    <section className="card hero">
+      <div><small>Kekayaan bersih</small><div className="big">{rupiah(worth)}</div><small>Saldo dompet + aset − utang</small></div>
+      <div style={{ textAlign: "right" }}><small>Selisih periode</small><div><b className={net >= 0 ? "inc" : "exp"} style={{ fontSize: "1.3rem" }}>{net >= 0 ? "+" : "−"}{rupiah(Math.abs(net))}</b></div><small>Total saldo {rupiah(x.total_balance ?? 0)}</small></div>
+    </section>
+    <section className="grid g4">{stat("Pemasukan", x.income ?? 0, "inc")}{stat("Pengeluaran", x.expense ?? 0, "exp")}{stat("Aset", x.assets ?? 0)}{stat("Utang", x.debts ?? 0)}</section>
+    <section className="card"><div className="head"><h2>Budget</h2>{budget > 0 && <span className="pill">{STATUS_LABEL[budgetStatus(used, budget)]}</span>}</div>
+      {budget ? <><div className="bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i className={used > budget ? "over" : ""} style={{ width: `${pct}%` }} /></div>
+        <small>{rupiah(used)} dari {rupiah(budget)} · sisa {rupiah(budget - used)}</small></> : <p className="muted">Belum ada budget pada periode ini.</p>}</section>
+    <section className="grid g2">
+      <div className="card"><h2>Pemasukan vs pengeluaran</h2><IncomeExpenseChart data={((series ?? []) as Row[]).map(r => ({ label: tanggal(String(r.bucket)), income: Number(r.income), expense: Number(r.expense) }))} /></div>
+      <div className="card"><h2>Pengeluaran per kategori</h2><CategoryPie data={((cats ?? []) as Row[]).map(r => ({ name: String(r.name), value: Number(r.total) }))} /></div>
+    </section>
+    <section className="grid g2e">
+      <div className="card"><h2>Saldo per dompet</h2><WalletBars data={(wallets ?? []).map(w => ({ name: w.name, value: Number(w.balance) }))} /></div>
+      <div className="card"><div className="head"><h2>Transaksi terbaru</h2><a href="/transaksi">Lihat semua</a></div>
+        {!recent?.length ? <p className="muted">Belum ada transaksi.</p> : <ul className="list">{recent.map(t => <li key={t.id}>
+          <span>{t.description || (t.type === "income" ? "Pemasukan" : t.type === "expense" ? "Pengeluaran" : "Transfer")}<br /><small>{tanggal(t.date)}</small></span>
+          <b className={t.type === "income" ? "inc" : t.type === "expense" ? "exp" : ""}>{t.type === "income" ? "+" : t.type === "expense" ? "−" : ""}{rupiah(Number(t.amount))}</b></li>)}</ul>}</div>
+    </section>
+  </main>);
 }
