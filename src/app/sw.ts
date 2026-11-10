@@ -1,3 +1,8 @@
+/// <reference lib="webworker" />
+// Directive di atas memberi TypeScript tipe lib.webworker.d.ts (ServiceWorkerGlobalScope dkk)
+// khusus untuk file ini, tanpa mengubah "lib" di tsconfig.json yang dipakai seluruh proyek Next.js.
+export type {};
+
 import { defaultCache } from "@serwist/next/worker";
 import { Serwist } from "serwist";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";

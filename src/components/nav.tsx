@@ -70,16 +70,8 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, ledger
   useEffect(() => { try { setCol(localStorage.getItem("sb-collapsed") === "1"); } catch {} }, []);
   const setCollapsed = (v: boolean) => { setCol(v); setUm(false); try { localStorage.setItem("sb-collapsed", v ? "1" : "0"); } catch {} };
   useEffect(() => setUm(false), [path]);
+  useEffect(() => { if (!um) return; const h = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest(".uc")) setUm(false); }; const k = (e: KeyboardEvent) => e.key === "Escape" && setUm(false); document.addEventListener("mousedown", h); document.addEventListener("keydown", k); return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); }; }, [um]);
   const [ask, setAsk] = useState<{ title: string; message?: string; label?: string; tone: "danger" | "default"; btn: HTMLButtonElement } | null>(null);
-  // Jangan tutup dropdown user ("um") saat dialog konfirmasi (di luar .uc) sedang terbuka,
-  // kalau tidak form di dalamnya ke-unmount sebelum requestSubmit() sempat jalan.
-  useEffect(() => {
-    if (!um) return;
-    const h = (e: MouseEvent) => { if (ask) return; if (!(e.target as HTMLElement).closest(".uc")) setUm(false); };
-    const k = (e: KeyboardEvent) => { if (ask) return; e.key === "Escape" && setUm(false); };
-    document.addEventListener("mousedown", h); document.addEventListener("keydown", k);
-    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); };
-  }, [um, ask]);
   // Tombol submit dengan data-confirm="pesan" memunculkan dialog konfirmasi sebelum form dikirim.
   // Opsional: data-confirm-title, data-confirm-label, data-confirm-tone="default".
   useEffect(() => {
