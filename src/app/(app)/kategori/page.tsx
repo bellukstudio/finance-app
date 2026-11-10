@@ -35,11 +35,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const { sb, role } = await getCtx();
   const { data: cats } = await sb.from("categories").select("id,name,type,parent_id").is("deleted_at", null).order("name");
   const parents = cats?.filter(c => !c.parent_id) ?? [];
-  return (<main><h1>Kategori</h1>{e && <p role="alert">{e}</p>}
+  const L = { expense: "Pengeluaran", income: "Pemasukan" } as const;
+  return (<main>
+    <div className="head"><div><h1>Kategori</h1><small>Kelompokkan transaksi agar laporan lebih jelas</small></div></div>
+    {e && <p role="alert">{e}</p>}
     {canManage(role) && <form action={create}><input name="name" placeholder="Nama kategori" required />
       <select name="type"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select>
       <select name="parent_id"><option value="">Tanpa induk</option>{parents.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type})</option>)}</select><button>Tambah</button></form>}
-    {(["expense","income"] as const).map(t => (<section key={t}><h2>{t === "expense" ? "Pengeluaran" : "Pemasukan"}</h2>
-      <ul>{cats?.filter(c => c.type === t).map(c => <li key={c.id}>{c.parent_id ? "↳ " : ""}{c.name}
-        {canManage(role) && <form action={remove} style={{ display: "inline" }}><input type="hidden" name="id" value={c.id} /> <button>Hapus</button></form>}</li>)}</ul></section>))}</main>);
+    <div className="grid g2e">{(["expense", "income"] as const).map(t => { const items = cats?.filter(c => c.type === t) ?? [];
+      return <section key={t} className="card"><div className="between"><h2 style={{ margin: 0 }}>{L[t]}</h2><span className={`pill ${t}`}>{items.length}</span></div>
+        {!items.length ? <p className="muted">Belum ada kategori.</p> : <ul className="list">{items.map(c => <li key={c.id}><span className={c.parent_id ? "sub" : ""}>{c.parent_id ? "↳ " : ""}{c.name}</span>
+          {canManage(role) && <form action={remove}><input type="hidden" name="id" value={c.id} /><button className="danger sm">Hapus</button></form>}</li>)}</ul>}</section>; })}</div>
+  </main>);
 }

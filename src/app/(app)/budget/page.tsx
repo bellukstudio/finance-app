@@ -44,8 +44,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const used = new Map(usage?.map(u => [u.budget_id, Number(u.used)]));
   const cn = new Map(cats?.map(c => [c.id, c.name])), wn = new Map(ws?.map(w => [w.id, w.name]));
   const list = (bs ?? []).filter(b => history ? b.end_date < today : b.end_date >= today);
-  return (<main><h1>Budget</h1>{e && <p role="alert">{e}</p>}
-    <p><small>Budget kategori dan budget dompet adalah dua sudut pandang atas transaksi pengeluaran yang sama. Satu pengeluaran dihitung sekali di tiap budget, dan tidak dijumlahkan dua kali. Transfer tidak memengaruhi budget.</small></p>
+  const PT: Record<string, string> = { monthly: "Bulanan", weekly: "Mingguan", yearly: "Tahunan", custom: "Kustom" };
+  return (<main>
+    <div className="head"><div><h1>Budget</h1><small>Pantau batas pengeluaran per kategori atau dompet</small></div>
+      <div className="seg2"><a href="/budget" aria-current={history ? undefined : "page"}>Aktif</a><a href="?history=1" aria-current={history ? "page" : undefined}>Riwayat</a></div></div>
+    {e && <p role="alert">{e}</p>}
     {canManage(role) && <form action={create}>
       <select name="scope"><option value="category">Per kategori</option><option value="wallet">Per dompet</option></select>
       <select name="category_id"><option value="">Kategori…</option>{cats?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
@@ -53,8 +56,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <select name="period_type"><option value="monthly">Bulanan</option><option value="weekly">Mingguan</option><option value="yearly">Tahunan</option><option value="custom">Kustom</option></select>
       <input type="date" name="ref" defaultValue={today} required /><input type="date" name="end" title="Akhir (khusus kustom)" />
       <input name="amount" type="number" step="0.01" placeholder="Nilai anggaran" required /><button>Buat budget</button></form>}
-    <p><a href="/budget">Aktif</a> | <a href="?history=1">Riwayat</a></p>
-    {!list.length ? <p>Belum ada budget.</p> : <ul>{list.map(b => { const u = used.get(b.id) ?? 0, a = Number(b.amount), st = budgetStatus(u, a);
-      return <li key={b.id}><b>{b.scope === "category" ? cn.get(b.category_id!) : wn.get(b.wallet_id!)}</b> ({b.period_type}, {tanggal(b.start_date)}–{tanggal(b.end_date)}) — anggaran {rupiah(a)}, terpakai {rupiah(u)}, sisa {rupiah(a - u)}, {budgetPercent(u, a).toFixed(0)}% · <b>{STATUS_LABEL[st]}</b>
-        {canManage(role) && <form action={remove} style={{ display: "inline" }}><input type="hidden" name="id" value={b.id} /> <button>Hapus</button></form>}</li>; })}</ul>}</main>);
+    <p>Budget kategori dan budget dompet adalah dua sudut pandang atas pengeluaran yang sama, jadi tidak dijumlahkan dua kali. Transfer tidak memengaruhi budget.</p>
+    {!list.length ? <p className="muted">Belum ada budget.</p> : <div className="cards">{list.map(b => { const u = used.get(b.id) ?? 0, a = Number(b.amount), st = budgetStatus(u, a), pc = budgetPercent(u, a);
+      return <article key={b.id} className="card"><div className="between"><b>{b.scope === "category" ? cn.get(b.category_id!) : wn.get(b.wallet_id!)}</b><span className="pill">{STATUS_LABEL[st]}</span></div>
+        <small>{PT[b.period_type] ?? b.period_type} · {tanggal(b.start_date)}–{tanggal(b.end_date)}</small>
+        <div className="bar" role="progressbar" aria-valuenow={Math.round(pc)} aria-valuemin={0} aria-valuemax={100}><i className={u > a ? "over" : ""} style={{ width: `${Math.min(100, pc)}%` }} /></div>
+        <div className="between"><small>Terpakai {rupiah(u)} ({pc.toFixed(0)}%)</small><small>Sisa {rupiah(a - u)}</small></div>
+        <small>Anggaran {rupiah(a)}</small>
+        {canManage(role) && <div className="tx-actions"><form action={remove}><input type="hidden" name="id" value={b.id} /><button className="danger">Hapus</button></form></div>}</article>; })}</div>}
+  </main>);
 }

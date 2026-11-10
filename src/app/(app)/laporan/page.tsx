@@ -35,5 +35,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
       return <tr key={x.budget_id}><td>{b?.scope === "category" ? cn.get(b.category_id) : wn.get(b?.wallet_id)}</td><td>{rupiah(Number(x.budget))}</td><td>{rupiah(Number(x.used))}</td><td>{STATUS_LABEL[budgetStatus(Number(x.used), Number(x.budget))]}</td></tr>; })}</tbody></table>;
   }
   return (<main><h1>Laporan</h1><PeriodForm current={p.key} from={p.from} to={p.to} extra={<select name="r" defaultValue={r}>{Object.entries(REPORTS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>} />
-    <p><small>Pembayaran utang tidak dihitung ke laporan kategori agar tidak ganda; transfer tidak dihitung sebagai pemasukan/pengeluaran.</small></p>{body}</main>);
+    <p><small>Pembayaran utang tidak dihitung ke laporan kategori agar tidak ganda; transfer tidak dihitung sebagai pemasukan/pengeluaran.</small></p><div className="card">{body}</div></main>);
 }

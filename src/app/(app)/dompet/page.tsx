@@ -37,12 +37,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const { sb, role } = await getCtx();
   const [{ data: bal }, { data: ws }] = await Promise.all([sb.from("wallet_balances").select("wallet_id,balance"), sb.from("wallets").select("*").is("deleted_at", null).order("name")]);
   const b = new Map(bal?.map(x => [x.wallet_id, Number(x.balance)]));
-  return (<main><h1>Dompet</h1>{e && <p role="alert" style={{ color: "crimson" }}>{e}</p>}
+  const total = (ws ?? []).reduce((a, w) => a + (b.get(w.id) ?? 0), 0);
+  return (<main>
+    <div className="head"><div><h1>Dompet</h1><small>Total saldo {rupiah(total)}</small></div></div>
+    {e && <p role="alert">{e}</p>}
     {canManage(role) && <form action={create}><input name="name" placeholder="Nama dompet" required />
       <select name="kind">{Object.entries(KIND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
       <input name="initial_balance" type="number" step="0.01" placeholder="Saldo awal" defaultValue={0} /><input name="description" placeholder="Deskripsi" /><button>Tambah</button></form>}
-    {!ws?.length && <p>Belum ada dompet.</p>}
-    <ul>{ws?.map(w => <li key={w.id}>{w.name} ({KIND[w.kind]}) — {rupiah(b.get(w.id) ?? 0)} {w.is_active ? "" : "[nonaktif]"}
-      {canManage(role) && <> <form action={toggle} style={{ display: "inline" }}><input type="hidden" name="id" value={w.id} /><input type="hidden" name="active" value={String(w.is_active)} /><button>{w.is_active ? "Nonaktifkan" : "Aktifkan"}</button></form>
-      <form action={remove} style={{ display: "inline" }}><input type="hidden" name="id" value={w.id} /><button>Hapus</button></form></>}</li>)}</ul></main>);
+    {!ws?.length ? <p className="muted">Belum ada dompet.</p> : <div className="cards">{ws.map(w => <article key={w.id} className="card" style={w.is_active ? undefined : { opacity: 0.6 }}>
+      <div className="between"><b>{w.name}</b><span className="pill">{KIND[w.kind]}{w.is_active ? "" : " · nonaktif"}</span></div>
+      <div className="big2">{rupiah(b.get(w.id) ?? 0)}</div>
+      {canManage(role) && <div className="tx-actions"><form action={toggle}><input type="hidden" name="id" value={w.id} /><input type="hidden" name="active" value={String(w.is_active)} /><button className="ghost">{w.is_active ? "Nonaktifkan" : "Aktifkan"}</button></form>
+        <form action={remove}><input type="hidden" name="id" value={w.id} /><button className="danger">Hapus</button></form></div>}</article>)}</div>}
+  </main>);
 }

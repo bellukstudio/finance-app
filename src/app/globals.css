@@ -14,7 +14,9 @@ input[type=file]{padding:.35rem}
 form{margin:0}
 main{display:flex;flex-direction:column;gap:20px}
 main>form,main>table,main>ul,main>p,main>h2,main>h1{margin:0}
-main>form:not([method=get]):not(.stack){display:flex;flex-wrap:wrap;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+main>form:not([method=get]):not(.stack){display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+main>form:not([method=get]) button{justify-self:start}
+main>form[method=get]{display:flex;gap:8px;flex-wrap:wrap}
 table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);display:block;overflow-x:auto}
 th,td{padding:10px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--muted);font-weight:600;font-size:.82rem}
 tr:last-child td{border-bottom:0}
@@ -69,3 +71,23 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:.85rem}details.
 .hero{padding:18px}.amount{font-size:1.8rem}.g4{gap:10px}
 }
 @media(prefers-reduced-motion:no-preference){button,.nav a{transition:background .15s,filter .15s}}
+
+.between{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:14px}
+.cards .card{display:flex;flex-direction:column;gap:6px}
+.big2{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+button.sm{padding:.3rem .7rem;font-size:.85rem}
+.seg2{display:inline-flex;background:var(--surface-2);border-radius:10px;padding:3px}
+.seg2 a{padding:5px 14px;border-radius:8px;color:var(--muted);font-weight:500}.seg2 a:hover{text-decoration:none}
+.seg2 a[aria-current=page]{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgb(0 0 0/.12)}
+.sub{padding-left:18px;color:var(--muted)}.list li{align-items:center}
+.card form.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}.card form.row input,.card form.row select{flex:1;min-width:110px}
+.card ul.list ul{list-style:none;padding:0}.card table{border:0;border-radius:0;background:transparent}
+.card .grow{flex:1}
+main>p{color:var(--muted);font-size:.9rem}main>h2,main>h3{margin-top:8px}main>meta{display:none}
+main>ul{list-style:none;padding:0;display:grid;gap:10px}
+main>ul>li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+main>ul>li>form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}main>ul>li>details{flex-basis:100%}
+main>ul>li button{padding:.3rem .7rem;font-size:.85rem;background:transparent;color:var(--text);border:1px solid var(--line)}
+main>ul>li ul{list-style:none;padding:0;color:var(--muted)}
+@media(max-width:600px){h1{font-size:1.35rem}.head>.toolbar,.head>form{width:100%}.head>form select,.head>form input{flex:1;min-width:120px}main>form:not([method=get]) button{justify-self:stretch}}

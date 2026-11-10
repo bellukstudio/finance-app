@@ -31,15 +31,21 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const [{ data: ds }, { data: ps }, { data: ws }, { data: cats }] = await Promise.all([sb.from("debts").select("*").is("deleted_at", null).order("due_date", { nullsFirst: false }),
     sb.from("debt_payments").select("debt_id,amount,paid_on").is("deleted_at", null).order("paid_on", { ascending: false }),
     sb.from("wallets").select("id,name").eq("is_active", true).is("deleted_at", null), sb.from("categories").select("id,name,type").eq("is_active", true).is("deleted_at", null)]);
-  return (<main><h1>Utang &amp; Piutang</h1>{e && <p role="alert">{e}</p>}
-    <p><small>Pembayaran membuat transaksi dompet otomatis dalam satu proses (tidak dihitung dua kali). Pembayaran utang dikecualikan dari laporan kategori; kategori hanya dipakai untuk pencatatan transaksi.</small></p>
+  return (<main>
+    <div className="head"><div><h1>Utang &amp; Piutang</h1><small>Catat pokok, jatuh tempo, dan pembayaran</small></div></div>
+    {e && <p role="alert">{e}</p>}
+    <p>Pembayaran membuat transaksi dompet otomatis dalam satu proses (tidak dihitung dua kali) dan dikecualikan dari laporan kategori.</p>
     {canWrite(role) && <form action={create}><select name="direction"><option value="payable">Utang (saya berutang)</option><option value="receivable">Piutang (orang berutang ke saya)</option></select>
       <input name="counterparty" placeholder="Pihak terkait" required /><input name="principal" type="number" step="0.01" placeholder="Pokok" required /><input name="due_date" type="date" /><input name="notes" placeholder="Catatan" /><button>Tambah</button></form>}
-    {!ds?.length && <p>Belum ada data.</p>}
-    <ul>{ds?.map(d => { const mine = ps?.filter(p => p.debt_id === d.id) ?? []; const rem = remaining(Number(d.principal), mine.map(p => Number(p.amount))); const st = debtStatus(rem, d.due_date, today);
-      const cc = cats?.filter(c => c.type === (d.direction === "payable" ? "expense" : "income")) ?? [];
-      return <li key={d.id}><b>{d.direction === "payable" ? "Utang ke" : "Piutang dari"} {d.counterparty}</b> — pokok {rupiah(Number(d.principal))}, sisa {rupiah(rem)}, jatuh tempo {d.due_date ? tanggal(d.due_date) : "-"} · <b>{DEBT_LABEL[st]}</b>
-        {rem > 0 && canWrite(role) && <form action={pay}><input type="hidden" name="did" value={d.id} /><input name="amt" type="number" step="0.01" max={rem} placeholder="Nominal" required /><input name="d" type="date" defaultValue={today} required />
-          <select name="wid">{ws?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select><select name="cid">{cc.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button>{d.direction === "payable" ? "Bayar" : "Terima"}</button></form>}
-        <details><summary>Riwayat pembayaran ({mine.length})</summary><ul>{mine.map((p, i) => <li key={i}>{tanggal(p.paid_on)}: {rupiah(Number(p.amount))}</li>)}</ul></details></li>; })}</ul></main>);
+    {!ds?.length ? <p className="muted">Belum ada data.</p> : <div className="cards">{ds.map(d => { const mine = ps?.filter(p => p.debt_id === d.id) ?? []; const pr = Number(d.principal); const rem = remaining(pr, mine.map(p => Number(p.amount))); const st = debtStatus(rem, d.due_date, today);
+      const cc = cats?.filter(c => c.type === (d.direction === "payable" ? "expense" : "income")) ?? []; const paid = pr > 0 ? Math.min(100, ((pr - rem) / pr) * 100) : 0;
+      return <article key={d.id} className="card"><div className="between"><b>{d.counterparty}</b><span className="pill">{DEBT_LABEL[st]}</span></div>
+        <small>{d.direction === "payable" ? "Utang saya" : "Piutang saya"} · jatuh tempo {d.due_date ? tanggal(d.due_date) : "-"}</small>
+        <div className="big2">{rupiah(rem)}</div>
+        <div className="bar"><i style={{ width: `${paid}%` }} /></div><small>Sisa dari pokok {rupiah(pr)}</small>
+        {rem > 0 && canWrite(role) && <details className="more"><summary>{d.direction === "payable" ? "Catat pembayaran" : "Catat penerimaan"}</summary><form action={pay} className="row"><input type="hidden" name="did" value={d.id} />
+          <input name="amt" type="number" step="0.01" max={rem} placeholder="Nominal" required /><input name="d" type="date" defaultValue={today} required />
+          <select name="wid">{ws?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select><select name="cid">{cc.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="sm">{d.direction === "payable" ? "Bayar" : "Terima"}</button></form></details>}
+        <details className="more"><summary>Riwayat ({mine.length})</summary><ul className="list">{mine.map((p, i) => <li key={i}><span>{tanggal(p.paid_on)}</span><b>{rupiah(Number(p.amount))}</b></li>)}</ul></details></article>; })}</div>}
+  </main>);
 }

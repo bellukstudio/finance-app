@@ -40,15 +40,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const [{ data: as }, { data: vals }] = await Promise.all([sb.from("assets").select("*").is("deleted_at", null).order("name"),
     sb.from("asset_valuations").select("asset_id,value,valued_on").order("valued_on", { ascending: false })]);
   const total = (as ?? []).reduce((a, x) => a + Number(x.current_value), 0);
-  return (<main><h1>Aset</h1>{e && <p role="alert">{e}</p>}
-    <p><small>Saldo rekening/dompet sudah dihitung di total saldo, jangan dicatat lagi sebagai aset “Cash”.</small></p>
+  return (<main>
+    <div className="head"><div><h1>Aset</h1><small>Total nilai {rupiah(total)}</small></div></div>
+    {e && <p role="alert">{e}</p>}
+    <p>Saldo rekening/dompet sudah dihitung di total saldo, jangan dicatat lagi sebagai aset “Cash”.</p>
     {canWrite(role) && <form action={create}><input name="name" placeholder="Nama aset" required /><select name="kind">{KINDS.map(k => <option key={k}>{k}</option>)}</select>
       <input name="acq" type="number" step="0.01" placeholder="Nilai perolehan" required /><input name="cur" type="number" step="0.01" placeholder="Nilai saat ini" required />
       <input name="bought" type="date" /><input name="nt" placeholder="Catatan" /><button>Tambah</button></form>}
-    <p>Total aset: <b>{rupiah(total)}</b></p>{!as?.length && <p>Belum ada aset.</p>}
-    <ul>{as?.map(a => { const h = vals?.filter(v => v.asset_id === a.id) ?? [];
-      return <li key={a.id}><b>{a.name}</b> ({a.kind}) — perolehan {rupiah(Number(a.acquisition_value))}, kini {rupiah(Number(a.current_value))} ({Number(a.current_value) - Number(a.acquisition_value) >= 0 ? "+" : ""}{rupiah(Number(a.current_value) - Number(a.acquisition_value))})
-        {canWrite(role) && <form action={revalue} style={{ display: "inline" }}> <input type="hidden" name="id" value={a.id} /><input name="val" type="number" step="0.01" placeholder="Nilai baru" required /><input name="d" type="date" defaultValue={todayJakarta()} required /><button>Perbarui nilai</button></form>}
-        {canManage(role) && <form action={remove} style={{ display: "inline" }}><input type="hidden" name="id" value={a.id} /> <button>Hapus</button></form>}
-        <details><summary>Riwayat nilai ({h.length})</summary><ul>{h.map((v, i) => <li key={i}>{tanggal(v.valued_on)}: {rupiah(Number(v.value))}</li>)}</ul></details></li>; })}</ul></main>);
+    {!as?.length ? <p className="muted">Belum ada aset.</p> : <div className="cards">{as.map(a => { const h = vals?.filter(v => v.asset_id === a.id) ?? []; const cur = Number(a.current_value), gain = cur - Number(a.acquisition_value);
+      return <article key={a.id} className="card"><div className="between"><b>{a.name}</b><span className="pill">{a.kind}</span></div>
+        <div className="big2">{rupiah(cur)}</div>
+        <small>Perolehan {rupiah(Number(a.acquisition_value))} · <span className={gain >= 0 ? "inc" : "exp"}>{gain >= 0 ? "+" : "−"}{rupiah(Math.abs(gain))}</span></small>
+        {canWrite(role) && <details className="more"><summary>Perbarui nilai</summary><form action={revalue} className="row"><input type="hidden" name="id" value={a.id} /><input name="val" type="number" step="0.01" placeholder="Nilai baru" required /><input name="d" type="date" defaultValue={todayJakarta()} required /><button className="sm">Simpan</button></form></details>}
+        <details className="more"><summary>Riwayat nilai ({h.length})</summary><ul className="list">{h.map((v, i) => <li key={i}><span>{tanggal(v.valued_on)}</span><b>{rupiah(Number(v.value))}</b></li>)}</ul></details>
+        {canManage(role) && <div className="tx-actions"><form action={remove}><input type="hidden" name="id" value={a.id} /><button className="danger">Hapus</button></form></div>}</article>; })}</div>}
+  </main>);
 }
