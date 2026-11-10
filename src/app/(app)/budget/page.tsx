@@ -1,68 +1,25 @@
-import { z } from "zod";
-import { revalidatePath } from "next/cache";
-import { getCtx, canManage, back } from "@/lib/context";
-import { pgMessage } from "@/lib/errors";
-import { rupiah, tanggal } from "@/lib/format";
-import { budgetPercent, budgetStatus, STATUS_LABEL } from "@/lib/budget";
-import { budgetRange, todayJakarta } from "@/lib/period";
+import { getCtx, canManage } from "@/lib/context";
+import { todayJakarta } from "@/lib/period";
+import { BudgetManager, type BudgetView } from "@/components/budget-manager";
 
-const B = z.object({ scope: z.enum(["category","wallet"]), category_id: z.string().uuid().optional().or(z.literal("")), wallet_id: z.string().uuid().optional().or(z.literal("")),
-  period_type: z.enum(["weekly","monthly","yearly","custom"]), ref: z.string().date(), end: z.string().date().optional().or(z.literal("")), amount: z.coerce.number().positive() });
-
-async function create(fd: FormData) {
-  "use server";
-  const { sb, user, familyId, role } = await getCtx();
-  if (!canManage(role)) return back("/budget", "Hanya Owner/Admin.");
-  const p = B.safeParse(Object.fromEntries(fd));
-  if (!p.success) return back("/budget", "Input tidak valid.");
-  const v = p.data;
-  const target = v.scope === "category" ? v.category_id : v.wallet_id;
-  if (!target) return back("/budget", v.scope === "category" ? "Pilih kategori." : "Pilih dompet.");
-  let start = v.ref, end = v.end || "";
-  if (v.period_type !== "custom") ({ start, end } = budgetRange(v.period_type, v.ref));
-  if (!end || end < start) return back("/budget", "Tanggal akhir tidak valid.");
-  const { error } = await sb.from("budgets").insert({ family_id: familyId, scope: v.scope, category_id: v.scope === "category" ? target : null, wallet_id: v.scope === "wallet" ? target : null,
-    period_type: v.period_type, start_date: start, end_date: end, amount: v.amount, created_by: user.id });
-  revalidatePath("/budget"); back("/budget", pgMessage(error));
-}
-async function remove(fd: FormData) {
-  "use server";
-  const { sb, user, role } = await getCtx();
-  if (!canManage(role)) return back("/budget", "Hanya Owner/Admin.");
-  const { error } = await sb.from("budgets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id")));
-  revalidatePath("/budget"); back("/budget", pgMessage(error));
-}
-
-export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string; history?: string }> }) {
-  const { e, history } = await searchParams;
+export default async function Page({ searchParams }: { searchParams: Promise<{ history?: string }> }) {
+  const { history } = await searchParams;
   const { sb, role } = await getCtx();
   const today = todayJakarta();
-  const [{ data: bs }, { data: usage }, { data: cats }, { data: ws }] = await Promise.all([
-    sb.from("budgets").select("id,scope,category_id,wallet_id,period_type,start_date,end_date,amount").is("deleted_at", null).order("start_date", { ascending: false }),
-    sb.from("budget_usage").select("budget_id,used"),
-    sb.from("categories").select("id,name").eq("type", "expense").eq("is_active", true).is("deleted_at", null), sb.from("wallets").select("id,name").is("deleted_at", null)]);
-  const used = new Map(usage?.map(u => [u.budget_id, Number(u.used)]));
-  const cn = new Map(cats?.map(c => [c.id, c.name])), wn = new Map(ws?.map(w => [w.id, w.name]));
-  const list = (bs ?? []).filter(b => history ? b.end_date < today : b.end_date >= today);
-  const PT: Record<string, string> = { monthly: "Bulanan", weekly: "Mingguan", yearly: "Tahunan", custom: "Kustom" };
-  return (<main>
-    <div className="head"><div><h1>Budget</h1><small>Pantau batas pengeluaran per kategori atau dompet</small></div>
-      <div className="seg2"><a href="/budget" aria-current={history ? undefined : "page"}>Aktif</a><a href="?history=1" aria-current={history ? "page" : undefined}>Riwayat</a></div></div>
-    {e && <p role="alert">{e}</p>}
-    {canManage(role) && <form action={create}>
-      <select name="scope"><option value="category">Per kategori</option><option value="wallet">Per dompet</option></select>
-      <select name="category_id"><option value="">Kategori…</option>{cats?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-      <select name="wallet_id"><option value="">Dompet…</option>{ws?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
-      <select name="period_type"><option value="monthly">Bulanan</option><option value="weekly">Mingguan</option><option value="yearly">Tahunan</option><option value="custom">Kustom</option></select>
-      <input type="date" name="ref" defaultValue={today} required /><input type="date" name="end" title="Akhir (khusus kustom)" />
-      <input name="amount" type="number" step="0.01" placeholder="Nilai anggaran" required /><button>Buat budget</button></form>}
-    <p>Budget kategori dan budget dompet adalah dua sudut pandang atas pengeluaran yang sama, jadi tidak dijumlahkan dua kali. Transfer tidak memengaruhi budget.</p>
-    {!list.length ? <p className="muted">Belum ada budget.</p> : <div className="cards">{list.map(b => { const u = used.get(b.id) ?? 0, a = Number(b.amount), st = budgetStatus(u, a), pc = budgetPercent(u, a);
-      return <article key={b.id} className="card"><div className="between"><b>{b.scope === "category" ? cn.get(b.category_id!) : wn.get(b.wallet_id!)}</b><span className="pill">{STATUS_LABEL[st]}</span></div>
-        <small>{PT[b.period_type] ?? b.period_type} · {tanggal(b.start_date)}–{tanggal(b.end_date)}</small>
-        <div className="bar" role="progressbar" aria-valuenow={Math.round(pc)} aria-valuemin={0} aria-valuemax={100}><i className={u > a ? "over" : ""} style={{ width: `${Math.min(100, pc)}%` }} /></div>
-        <div className="between"><small>Terpakai {rupiah(u)} ({pc.toFixed(0)}%)</small><small>Sisa {rupiah(a - u)}</small></div>
-        <small>Anggaran {rupiah(a)}</small>
-        {canManage(role) && <div className="tx-actions"><form action={remove}><input type="hidden" name="id" value={b.id} /><button className="danger">Hapus</button></form></div>}</article>; })}</div>}
-  </main>);
+  const [{ data: bs }, { data: usage }, { data: bw }, { data: bc }, { data: ws }, { data: cats }] = await Promise.all([
+    sb.from("budgets").select("id,name,scope,category_id,wallet_id,start_date,end_date,amount").is("deleted_at", null).order("start_date", { ascending: false }).order("created_at"),
+    sb.from("budget_usage").select("budget_id,used,topup"), sb.from("budget_wallets").select("budget_id,wallet_id"), sb.from("budget_categories").select("budget_id,category_id"),
+    sb.from("wallets").select("id,name").eq("is_active", true).is("deleted_at", null).order("name"),
+    sb.from("categories").select("id,name").eq("type", "expense").eq("is_active", true).is("deleted_at", null).order("name")]);
+  const cn = new Map((cats ?? []).map((c) => [c.id, c.name])), wn = new Map((ws ?? []).map((w) => [w.id, w.name]));
+  const u = new Map((usage ?? []).map((x) => [x.budget_id, x]));
+  const group = (rows: { budget_id: string }[] | null, key: "wallet_id" | "category_id") => { const m = new Map<string, string[]>(); (rows as unknown as Record<string, string>[] | null ?? []).forEach((r) => m.set(r.budget_id, [...(m.get(r.budget_id) ?? []), r[key]])); return m; };
+  const wm = group(bw, "wallet_id"), cm = group(bc, "category_id");
+  const list: BudgetView[] = (bs ?? []).filter((b) => (history ? b.end_date < today : b.end_date >= today)).map((b) => {
+    const x = u.get(b.id), start = b.start_date, [y, m] = start.split("-").map(Number);
+    return { id: b.id, name: b.name || (b.category_id && cn.get(b.category_id)) || (b.wallet_id && wn.get(b.wallet_id)) || "Budget", amount: Number(b.amount), used: Number(x?.used ?? 0), topup: Number(x?.topup ?? 0), start, end: b.end_date, month: m, year: y,
+      wallet_ids: wm.get(b.id) ?? [], category_ids: cm.get(b.id) ?? [],
+      ...(b.scope === "multi" ? {} : { wallet_ids: b.scope === "wallet" && b.wallet_id ? [b.wallet_id] : wm.get(b.id) ?? [], category_ids: b.scope === "category" && b.category_id ? [b.category_id] : cm.get(b.id) ?? [] }) };
+  });
+  return <BudgetManager budgets={list} wallets={ws ?? []} cats={cats ?? []} canEdit={canManage(role)} history={!!history} today={today} />;
 }
