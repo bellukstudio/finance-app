@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-const COLORS = ["#a78bfa", "#4fd08f", "#62adff", "#f2bb4e", "#ff6f7d", "#2dd4bf", "#f472b6", "#94a3b8"];
+const COLORS = ["#22e1ee", "#a78bfa", "#2ef2a2", "#ffbf3c", "#ff4f81", "#5aa7ff", "#f472b6", "#94a3b8"];
 const idr = (n: number) => "Rp" + new Intl.NumberFormat("id-ID").format(n);
 const compact = (v: number) => new Intl.NumberFormat("id-ID", { notation: "compact" }).format(v);
 const tip = { contentStyle: { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10, color: "var(--text)" }, cursor: { fill: "var(--surface-2)" } };
