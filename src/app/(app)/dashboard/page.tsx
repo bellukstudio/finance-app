@@ -30,7 +30,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   if (!mem) return <form action={createFamily} className="card stack" style={{ maxWidth: 420, display: "grid", gap: 12 }}><h1>Buat Keluarga</h1><input name="name" placeholder="Nama keluarga" required /><button>Buat</button></form>;
   const { sb, familyId } = await getCtx();
   const cur = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.m ?? "") ? sp.m! : todayJakarta().slice(0, 7);
-  const [y, mo] = cur.split("-").map(Number);
+  const y = Number(cur.slice(0, 4)), mo = Number(cur.slice(5, 7));
   const from = `${cur}-01`, to = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10);
   const [{ data: s }, { data: wallets }, { data: series }, { data: catTot }, { data: bs }, { data: bu }, { data: recent }, { data: trf }, { data: debts }, { data: pays }, { data: cats }] = await Promise.all([
     sb.rpc("dashboard_summary", { fid: familyId, d_from: from, d_to: to }),

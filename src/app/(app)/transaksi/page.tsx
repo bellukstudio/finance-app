@@ -56,7 +56,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
       <select name="wallet" defaultValue={sp.wallet}><option value="">Semua dompet</option>{wallets?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
       <input type="date" name="from" defaultValue={sp.from} aria-label="Dari tanggal" /><input type="date" name="to" defaultValue={sp.to} aria-label="Sampai tanggal" /><button className="ghost">Filter</button></form>
     {!txs?.length ? <p className="muted">Tidak ada transaksi.</p> : [...groups].map(([date, list]) => {
-      const [y, m, d] = date.split("-").map(Number), dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+      const y = Number(date.slice(0, 4)), m = Number(date.slice(5, 7)), d = Number(date.slice(8, 10)), dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
       const sum = (t: string) => list.filter(x => x.type === t).reduce((a, x) => a + Number(x.amount), 0), e = sum("expense"), i = sum("income"), tr = sum("transfer");
       return <section key={date} className="dg">
         <div className="dh"><div className="who"><span className="dbox"><b>{d}</b><small>{SHORT[m - 1]}</small></span><div><b>{DAY[dow]}, {d} {MON[m - 1]}</b><br /><small className="muted">{list.length} transaksi</small></div></div>
