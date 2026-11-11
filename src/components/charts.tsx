@@ -12,20 +12,20 @@ const axis = { tick: { fill: "var(--muted)", fontSize: 12 }, tickLine: false, ax
 const Empty = ({ t }: { t: string }) => <p className="muted" style={{ padding: "40px 0", textAlign: "center" }}>{t}</p>;
 const go = (href?: string) => { if (href && typeof window !== "undefined") window.location.assign(href); };
 
-export function IncomeExpenseChart({ data }: { data: TrendDatum[] }) {
+export function IncomeExpenseChart({ data, onBarClick }: { data: TrendDatum[]; onBarClick?: (kind: "income" | "expense", label: string) => void }) {
   if (!data.length) return <Empty t="Belum ada data pada periode ini." />;
   return (
     <div style={{ height: 250 }}><ResponsiveContainer><BarChart data={data} barGap={3}>
       <CartesianGrid vertical={false} stroke="var(--line)" /><XAxis dataKey="label" {...axis} /><YAxis tickFormatter={compact} width={48} {...axis} />
       <Tooltip {...tip} formatter={(v: number) => idr(v)} />
-      <Bar dataKey="income" name="Pemasukan" fill="var(--income)" fillOpacity={0.85} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(entry: any) => go(entry?.payload?.incomeHref)} />
-      <Bar dataKey="expense" name="Pengeluaran" fill="var(--expense)" fillOpacity={0.85} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(entry: any) => go(entry?.payload?.expenseHref)} />
+      <Bar dataKey="income" name="Pemasukan" fill="var(--income)" fillOpacity={0.85} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(entry: any) => onBarClick?.("income", String(entry?.payload?.label ?? ""))} />
+      <Bar dataKey="expense" name="Pengeluaran" fill="var(--expense)" fillOpacity={0.85} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(entry: any) => onBarClick?.("expense", String(entry?.payload?.label ?? ""))} />
       <Legend iconType="square" wrapperStyle={{ fontSize: 12, color: "var(--muted)" }} />
     </BarChart></ResponsiveContainer></div>
   );
 }
 
-export function CategoryPie({ data }: { data: CategoryDatum[] }) {
+export function CategoryPie({ data, onCategoryClick }: { data: CategoryDatum[]; onCategoryClick?: (item: CategoryDatum) => void }) {
   const [active, setActive] = useState<number | null>(null);
   if (!data.length) return <Empty t="Belum ada pengeluaran pada periode ini." />;
   const total = data.reduce((a, d) => a + d.value, 0);
@@ -35,8 +35,8 @@ export function CategoryPie({ data }: { data: CategoryDatum[] }) {
       <div style={{ height: 190, width: 190, position: "relative", flex: "none" }}>
         <ResponsiveContainer><PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="66%" outerRadius="96%" paddingAngle={2} stroke="none"
-            onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)} onClick={(_, i) => go(data[i]?.href)}>
-            {data.map((d, i) => <Cell key={d.name} fill={COLORS[i % COLORS.length]} opacity={active === null || active === i ? 1 : 0.35} cursor={d.href ? "pointer" : undefined} />)}
+            onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)} onClick={(_, i) => { const item = data[i]; if (onCategoryClick) onCategoryClick(item); else go(item?.href); }}>
+            {data.map((d, i) => <Cell key={d.name} fill={COLORS[i % COLORS.length]} opacity={active === null || active === i ? 1 : 0.35} cursor={d.href || onCategoryClick ? "pointer" : undefined} />)}
           </Pie>
         </PieChart></ResponsiveContainer>
         <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none", textAlign: "center", padding: 34 }}>
@@ -45,7 +45,7 @@ export function CategoryPie({ data }: { data: CategoryDatum[] }) {
       </div>
       <ul className="legend">
         {data.slice(0, 8).map((d, i) => (
-          <li key={d.name} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)} onClick={() => go(d.href)} style={{ cursor: d.href ? "pointer" : undefined }}>
+          <li key={d.name} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)} onClick={() => { if (onCategoryClick) onCategoryClick(d); else go(d.href); }} style={{ cursor: onCategoryClick || d.href ? "pointer" : undefined }}>
             <span><i style={{ background: COLORS[i % COLORS.length] }} />{d.name}</span>
             <span className="muted mono">{Math.round((d.value / total) * 100)}%</span>
           </li>
