@@ -74,3 +74,13 @@ button.sc[aria-expanded=true]{background:var(--surface-2);box-shadow:0 0 0 1px v
 .bcats b{font-family:var(--font-mono),monospace;font-size:.86rem;overflow-wrap:anywhere}
 .mb .modal.wide{max-width:560px}
 .mb .modal .dg{margin-bottom:0}
+
+/* ── Perbaikan: card transaksi & nominal tidak boleh terpotong ── */
+.dlist{grid-auto-rows:max-content;align-content:start}
+.dg>.ti,.dlist>.ti{flex:none;min-height:min-content}
+.ti{overflow:visible}
+.ti .ti-main{align-items:center}
+.ti .ti-t{overflow:visible}
+.ti .ti-t b,.ti .ti-t small{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+.ti .ti-amt{flex:none;max-width:none;overflow:visible;text-overflow:clip;white-space:nowrap}
+.ti .tag{max-width:none;flex:none}
