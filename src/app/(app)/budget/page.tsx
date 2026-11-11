@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ h
   //  • transfer ber-budget_id      → menambah budget (top-up)
   let txs: BudgetTx[] = [];
   if (list.length) {
-    const lo = list.reduce((a, b) => (b.start < a ? b.start : a), list[0].start), hi = list.reduce((a, b) => (b.end > a ? b.end : a), list[0].end);
+    const lo = list.map((b) => b.start).reduce((a, d) => (d < a ? d : a)), hi = list.map((b) => b.end).reduce((a, d) => (d > a ? d : a));
     const ids = list.map((b) => b.id).join(",");
     const { data } = await sb.from("transactions").select("id,date,type,amount,description,note,wallet_id,to_wallet_id,category_id,budget_id")
       .eq("family_id", familyId).is("deleted_at", null).in("type", ["expense", "transfer"])
