@@ -29,14 +29,21 @@ export function CategoryPie({ data, onCategoryClick }: { data: CategoryDatum[]; 
   const [active, setActive] = useState<number | null>(null);
   if (!data.length) return <Empty t="Belum ada pengeluaran pada periode ini." />;
   const total = data.reduce((a, d) => a + d.value, 0);
-  const sel = active === null ? null : data[active];
+  const sel = active === null ? null : data[active] ?? null;
   return (
     <div className="pie">
       <div style={{ height: 190, width: 190, position: "relative", flex: "none" }}>
         <ResponsiveContainer><PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="66%" outerRadius="96%" paddingAngle={2} stroke="none"
-            onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)} onClick={(_, i) => { const item = data[i]; if (!item) return; if (onCategoryClick) onCategoryClick(item); else go(item.href); }}
-            >
+            onMouseEnter={(_, i) => setActive(i)}
+            onMouseLeave={() => setActive(null)}
+            onClick={(_, i) => {
+              const item = data[i];
+              if (!item) return;
+              if (onCategoryClick) onCategoryClick(item);
+              else go(item.href);
+            }}
+          >
             {data.map((d, i) => <Cell key={d.name} fill={COLORS[i % COLORS.length]} opacity={active === null || active === i ? 1 : 0.35} cursor={d.href || onCategoryClick ? "pointer" : undefined} />)}
           </Pie>
         </PieChart></ResponsiveContainer>
