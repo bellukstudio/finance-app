@@ -35,7 +35,8 @@ export function CategoryPie({ data, onCategoryClick }: { data: CategoryDatum[]; 
       <div style={{ height: 190, width: 190, position: "relative", flex: "none" }}>
         <ResponsiveContainer><PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="66%" outerRadius="96%" paddingAngle={2} stroke="none"
-            onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)} onClick={(_, i) => { const item = data[i]; if (onCategoryClick) onCategoryClick(item); else go(item?.href); }}>
+            onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)} onClick={(_, i) => { const item = data[i]; if (!item) return; if (onCategoryClick) onCategoryClick(item); else go(item.href); }}
+            >
             {data.map((d, i) => <Cell key={d.name} fill={COLORS[i % COLORS.length]} opacity={active === null || active === i ? 1 : 0.35} cursor={d.href || onCategoryClick ? "pointer" : undefined} />)}
           </Pie>
         </PieChart></ResponsiveContainer>
