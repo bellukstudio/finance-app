@@ -29,11 +29,13 @@ export function CalculatorNavShortcut() {
     </button>
   );
 
+  const popover = open && <CalculatorPopover onClose={() => setOpen(false)} />;
+
   return (
     <>
       <span ref={hostRef} className="calculator-nav-host">{button()}</span>
       {topbar && createPortal(button("calculator-nav-shortcut calculator-topbar-shortcut"), topbar)}
-      {open && <CalculatorPopover onClose={() => setOpen(false)} />}
+      {popover && (topbar ? createPortal(popover, document.body) : popover)}
       <style jsx global>{`
         .calculator-nav-host{display:contents}
         .calculator-nav-shortcut{
