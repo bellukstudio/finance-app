@@ -8,7 +8,10 @@ export type CatOpt = Opt & { type: string };
 export type BudgetOpt = Opt & { start: string; end: string };
 type Kind = "income" | "expense" | "transfer";
 const TABS: { k: Kind; label: string; icon: "down" | "up" | "swap"; c: string }[] = [
-  { k: "income", label: "Pemasukan", icon: "down", c: "var(--income)" }, { k: "expense", label: "Pengeluaran", icon: "up", c: "var(--expense)" }, { k: "transfer", label: "Transfer", icon: "swap", c: "var(--transfer)" }];
+  { k: "income", label: "Pemasukan", icon: "down", c: "var(--income)" },
+  { k: "expense", label: "Pengeluaran", icon: "up", c: "var(--expense)" },
+  { k: "transfer", label: "Transfer", icon: "swap", c: "var(--transfer)" },
+];
 const MAX_FILE = 4_000_000, OK_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const kb = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} KB`);
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
@@ -43,7 +46,6 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
       const r = await saveTx(kind === "transfer" ? { ...base, type: "transfer", to_wallet_id: to } : { ...base, type: kind, category_id: cat });
       if (!r.ok) return setErr(r.error);
       if (!file || !r.id) return onClose();
-      // Transaksi sudah tersimpan; nota diunggah setelahnya.
       try {
         const fd = new FormData(); fd.set("transaction_id", r.id); fd.set("file", file);
         const res = await fetch("/api/attachments", { method: "POST", body: fd, headers: { "x-json": "1" } });
@@ -62,7 +64,7 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
           <div className="tabs3" role="group" aria-label="Jenis transaksi">
             {TABS.map((t) => <button type="button" key={t.k} aria-pressed={kind === t.k} style={{ ["--c" as string]: t.c }} onClick={() => setKind(t.k)}><Icon n={t.icon} /> {t.label}</button>)}
           </div>
-          <label className="fld"><span>Jumlah (Rp)</span><input className="amount" inputMode="numeric" placeholder="0" value={shown} autoFocus onChange={(e) => setAmount(e.target.value.replace(/\D/g, "").slice(0, 13))} /></label>
+          <label className="fld"><span>Jumlah (Rp)</span><input className="amount" inputMode="numeric" placeholder="0" value={shown} autoFocus onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))} /></label>
           <div className="two">
             <label className="fld"><span>Tanggal</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></label>
             <label className="fld"><span>{kind === "transfer" ? "Wallet asal" : "Wallet"}</span><select value={wallet} onChange={(e) => setWallet(e.target.value)} required>{wallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
@@ -70,32 +72,28 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
           {kind === "transfer"
             ? <label className="fld"><span>Wallet tujuan</span><select value={to} onChange={(e) => setTo(e.target.value)} required>{wallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
             : <label className="fld"><span>Kategori</span><select value={cat} onChange={(e) => setCat(e.target.value)} required>{list.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
-          {kind !== "income" && (
-            <div className="alloc">
-              <span className="lbl"><Icon n="target" />{kind === "expense" ? "Potong dari budget (opsional)" : "Tambah ke budget (opsional)"}</span>
-              <select aria-label="Budget" value={budget} onChange={(e) => setBudget(e.target.value)}>
-                <option value="">{kind === "expense" ? "Otomatis sesuai wallet & kategori" : "Tidak dialokasikan"}</option>
-                {bl.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-              <small className="muted">{kind === "expense" ? "Jika dipilih, hanya budget ini yang terpotong, tidak bentrok dengan budget lain." : "Transfer menambah total budget yang dipilih."}</small>
-              {!bl.length && <small className="muted">Belum ada budget pada tanggal ini.</small>}
-            </div>
-          )}
+          {kind !== "income" && <div className="alloc">
+            <span className="lbl"><Icon n="target" />{kind === "expense" ? "Potong dari budget (opsional)" : "Tambah ke budget (opsional)"}</span>
+            <select aria-label="Budget" value={budget} onChange={(e) => setBudget(e.target.value)}>
+              <option value="">{kind === "expense" ? "Otomatis sesuai wallet & kategori" : "Tidak dialokasikan"}</option>
+              {bl.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+            <small className="muted">{kind === "expense" ? "Jika dipilih, hanya budget ini yang terpotong, tidak bentrok dengan budget lain." : "Transfer menambah total budget yang dipilih."}</small>
+            {!bl.length && <small className="muted">Belum ada budget pada tanggal ini.</small>}
+          </div>}
           <label className="fld"><span>Catatan</span><input value={note} maxLength={200} placeholder="Opsional…" onChange={(e) => setNote(e.target.value)} /></label>
           <div className="fld"><span>Nota (opsional)</span>
             <input ref={fileRef} type="file" hidden accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
-            {file ? (
-              <div className="nota">
-                {thumb ? <img src={thumb} alt="Pratinjau nota" /> : <span className="nota-ico"><Icon n="list" /></span>}
-                <span className="nota-t"><b>{file.name}</b><small className="muted">{kb(file.size)}</small></span>
-                <button type="button" className="ib del" aria-label="Hapus nota" disabled={pending || saved} onClick={() => setFile(null)}><Icon n="trash" /></button>
-              </div>
-            ) : <button type="button" className="ghost upl" onClick={() => fileRef.current?.click()}><Icon n="plus" /> Pilih foto atau PDF nota</button>}
+            {file ? <div className="nota">
+              {thumb ? <img src={thumb} alt="Pratinjau nota" /> : <span className="nota-ico"><Icon n="list" /></span>}
+              <span className="nota-t"><b>{file.name}</b><small className="muted">{kb(file.size)}</small></span>
+              <button type="button" className="ib del" aria-label="Hapus nota" disabled={pending || saved} onClick={() => setFile(null)}><Icon n="trash" /></button>
+            </div> : <button type="button" className="ghost upl" onClick={() => fileRef.current?.click()}><Icon n="plus" /> Pilih foto atau PDF nota</button>}
             <small className="muted">JPEG, PNG, WebP, atau PDF. Maksimal 4 MB.</small>
           </div>
           {err && <p className="err" role="alert">{err}</p>}
           {saved ? <button type="button" className="save" onClick={onClose}>Selesai</button>
-            : <button className="save" disabled={pending || !amount}><Icon n="save" /> {pending ? (file ? "Menyimpan & mengunggah…" : "Menyimpan…") : "Simpan"}</button>}
+            : <button className="save" disabled={pending || !amount} style={{ opacity: 1, filter: "none" }}><Icon n="save" /> {pending ? (file ? "Menyimpan & mengunggah…" : "Menyimpan…") : "Simpan"}</button>}
         </div>
       </form>
     </div>
