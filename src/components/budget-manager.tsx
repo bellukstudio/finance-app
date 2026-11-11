@@ -4,11 +4,13 @@ import { useEffect, useState, useTransition } from "react";
 import { removeBudget, saveBudget } from "@/app/(app)/budget/actions";
 import { budgetPercent, budgetStatus } from "@/lib/budget";
 import { rupiah } from "@/lib/format";
+import { TxRow, type TxRowData } from "./tx-row";
 import { ConfirmDialog } from "./confirm-dialog";
 import { Icon } from "./icons";
 import { MultiPick, type PickOpt } from "./multi-pick";
 
-export type BudgetView = { id: string; name: string; amount: number; used: number; topup: number; start: string; end: string; month: number; year: number; wallet_ids: string[]; category_ids: string[] };
+export type BudgetView = { id: string; name: string; amount: number; used: number; topup: number; start: string; end: string; month: number; year: number; wallet_ids: string[]; category_ids: string[]; tx_ids: string[] };
+export type BudgetTx = TxRowData & { budget_id: string | null };
 const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
 function BudgetModal({ initial, wallets, cats, today, onClose }: { initial: BudgetView | null; wallets: PickOpt[]; cats: PickOpt[]; today: string; onClose: () => void }) {
@@ -43,9 +45,41 @@ function BudgetModal({ initial, wallets, cats, today, onClose }: { initial: Budg
   );
 }
 
-export function BudgetManager({ budgets, wallets, cats, canEdit, history, today }: { budgets: BudgetView[]; wallets: PickOpt[]; cats: PickOpt[]; canEdit: boolean; history: boolean; today: string }) {
-  const [modal, setModal] = useState<{ b: BudgetView | null } | null>(null), [open, setOpen] = useState<string | null>(null), [err, setErr] = useState<string | null>(null);
-  const wn = new Map(wallets.map((w) => [w.id, w.name])), cn = new Map(cats.map((c) => [c.id, c.name]));
+function BudgetTxModal({ b, txs, wn, cn, onClose }: { b: BudgetView; txs: BudgetTx[]; wn: Map<string, string>; cn: Map<string, string>; onClose: () => void }) {
+  useEffect(() => { const h = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [onClose]);
+  const total = b.amount + b.topup, left = total - b.used, pc = budgetPercent(b.used, total), st = budgetStatus(b.used, total);
+  const bn = new Map([[b.id, b.name]]);
+  const per = new Map<string, number>();
+  txs.filter((t) => t.type === "expense").forEach((t) => { const k = t.category_id ? cn.get(t.category_id) ?? "Kategori" : "Tanpa kategori"; per.set(k, (per.get(k) ?? 0) + Number(t.amount)); });
+  const cats = [...per.entries()].sort((a, c) => c[1] - a[1]);
+  const spent = cats.reduce((a, [, v]) => a + v, 0);
+  return (
+    <div className="mb" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal wide" role="dialog" aria-modal="true" aria-label={`Transaksi budget ${b.name}`}>
+        <header><div><h2>{b.name}</h2><small className="muted">{MONTHS[b.month - 1]} {b.year} · {txs.length} transaksi</small></div><button type="button" className="x" aria-label="Tutup" onClick={onClose}><Icon n="x" /></button></header>
+        <div className="body">
+          <div className="bsum" data-st={st}>
+            <div className="between"><div><span className="lbl2">Terpakai</span><div className="big">{rupiah(b.used)}</div></div><span className="pcb">{Math.round(pc)}%</span></div>
+            <div className="bar" role="progressbar" aria-label={`${b.name} terpakai`} aria-valuenow={Math.round(Math.min(100, pc))} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${Math.min(100, pc)}%` }} /></div>
+            <div className="between"><small className="muted mono">dari {rupiah(total)}{b.topup > 0 && <> (termasuk +{rupiah(b.topup)} transfer)</>}</small>
+              <small>{left >= 0 ? "Sisa" : "Lebih"} <b className={left >= 0 ? "inc mono" : "exp mono"}>{rupiah(Math.abs(left))}</b></small></div>
+          </div>
+          {cats.length > 0 && <div><span className="lbl">Per kategori</span>
+            <div className="bcats" style={{ marginTop: 6 }}>{cats.map(([name, v]) => <div key={name}><small className="muted">{name}</small><b>{rupiah(v)}</b><small className="muted">{spent ? Math.round(v / spent * 100) : 0}% dari total</small></div>)}</div></div>}
+          <div><span className="lbl">Daftar transaksi</span>
+            <div className="dg" style={{ marginTop: 6 }}>
+              {!txs.length ? <p className="muted">Belum ada transaksi yang terhubung dengan budget ini.</p> : txs.map((t) => <TxRow key={t.id} t={t} maps={{ wallets: wn, cats: cn, budgets: bn }} />)}
+            </div></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BudgetManager({ budgets, transactions, walletNames, catNames, wallets, cats, canEdit, history, today }: { budgets: BudgetView[]; transactions: BudgetTx[]; walletNames: PickOpt[]; catNames: PickOpt[]; wallets: PickOpt[]; cats: PickOpt[]; canEdit: boolean; history: boolean; today: string }) {
+  const [modal, setModal] = useState<{ b: BudgetView | null } | null>(null), [open, setOpen] = useState<BudgetView | null>(null), [err, setErr] = useState<string | null>(null);
+  const wn = new Map(walletNames.map((w) => [w.id, w.name])), cn = new Map(catNames.map((c) => [c.id, c.name]));
+  const txMap = new Map(transactions.map((t) => [t.id, t]));
   const [toDel, setToDel] = useState<BudgetView | null>(null);
   const del = async (b: BudgetView) => { const r = await removeBudget(b.id); setToDel(null); if (!r.ok) setErr(r.error); };
   return (
@@ -63,7 +97,7 @@ export function BudgetManager({ budgets, wallets, cats, canEdit, history, today 
                 <div><b>{b.name}</b><br /><small>{MONTHS[b.month - 1]} {b.year}</small></div>
                 <div className="toolbar"><span className="pct">{Math.round(pc)}%</span>
                   <span className="ibs">
-                    <button type="button" className="ib" aria-label="Lihat rincian" aria-expanded={open === b.id} onClick={() => setOpen(open === b.id ? null : b.id)}><Icon n="eye" /></button>
+                    <button type="button" className="ib" aria-label="Lihat transaksi" aria-haspopup="dialog" onClick={() => setOpen(b)}><Icon n="eye" /></button>
                     {canEdit && <><button type="button" className="ib" aria-label="Ubah budget" onClick={() => setModal({ b })}><Icon n="edit" /></button>
                       <button type="button" className="ib del" aria-label="Hapus budget" onClick={() => { setErr(null); setToDel(b); }}><Icon n="trash" /></button></>}
                   </span></div>
@@ -76,17 +110,10 @@ export function BudgetManager({ budgets, wallets, cats, canEdit, history, today 
               </div>
               <div className="row2"><small>{left >= 0 ? "Sisa:" : "Lebih:"} <b className={left >= 0 ? "inc mono" : "exp mono"}>{rupiah(Math.abs(left))}</b></small>
                 {b.topup > 0 && <span className="topup mono">+{rupiah(b.topup)} dari transfer</span>}</div>
-              {open === b.id && (
-                <dl className="mono" style={{ margin: 0, display: "grid", gridTemplateColumns: "auto auto", justifyContent: "space-between", gap: "4px 16px", fontSize: ".8rem", borderTop: "1px solid var(--line)", paddingTop: 8 }}>
-                  <dt className="muted">Anggaran awal</dt><dd style={{ margin: 0, textAlign: "right" }}>{rupiah(b.amount)}</dd>
-                  <dt className="muted">Tambahan transfer</dt><dd style={{ margin: 0, textAlign: "right" }} className="trf">{rupiah(b.topup)}</dd>
-                  <dt className="muted">Total budget</dt><dd style={{ margin: 0, textAlign: "right" }}>{rupiah(total)}</dd>
-                  <dt className="muted">Terpakai</dt><dd style={{ margin: 0, textAlign: "right" }} className="exp">{rupiah(b.used)}</dd>
-                  <dt className="muted">Periode</dt><dd style={{ margin: 0, textAlign: "right" }}>{b.start} s/d {b.end}</dd>
-                </dl>)}
             </article>);
         })}</div>)}
       {toDel && <ConfirmDialog tone="danger" title={`Hapus budget "${toDel.name}"?`} message="Budget ini akan dihapus dari daftar. Transaksi yang sudah tercatat tidak ikut terhapus." confirmLabel="Hapus budget" onCancel={() => setToDel(null)} onConfirm={() => del(toDel)} />}
+      {open && <BudgetTxModal b={open} txs={open.tx_ids.map((id) => txMap.get(id)).filter((t): t is BudgetTx => !!t)} wn={wn} cn={cn} onClose={() => setOpen(null)} />}
       {modal && <BudgetModal initial={modal.b} wallets={wallets} cats={cats} today={today} onClose={() => setModal(null)} />}
     </main>
   );

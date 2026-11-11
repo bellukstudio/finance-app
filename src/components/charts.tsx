@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-type CategoryDatum = { name: string; value: number; href?: string };
+type CategoryDatum = { id?: string; name: string; value: number; href?: string };
 type TrendDatum = { label: string; income: number; expense: number; incomeHref?: string; expenseHref?: string };
 const COLORS = ["#22e1ee", "#a78bfa", "#2ef2a2", "#ffbf3c", "#ff4f81", "#5aa7ff", "#f472b6", "#94a3b8"];
 const idr = (n: number) => "Rp" + new Intl.NumberFormat("id-ID").format(n);
