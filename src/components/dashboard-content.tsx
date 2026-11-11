@@ -40,20 +40,16 @@ const shift = (y: number, m: number, d: number) => { const x = new Date(Date.UTC
 
 export function DashboardContent({ ledger, from, to, monthLabel, year, income, expense, net, trfSum, trfCount, recent, wallets, cats, bs, series, catTot, x, debts, pays, alerts, qs }: DashboardContentProps) {
   const [sheet, setSheet] = useState<null | { title: string; subtitle?: string; items: Tx[] }>(null);
-  const maxBal = Math.max(1, ...(wallets ?? []).map((w) => Math.abs(Number(w.balance))));
   const walletMap = useMemo(() => new Map((wallets ?? []).map((w) => [w.wallet_id as string, w.name as string])), [wallets]);
   const catMap = useMemo(() => new Map((cats ?? []).map((c) => [c.id, c.name])), [cats]);
   const budgetMap = useMemo(() => new Map((bs ?? []).map((b) => [b.id, b.name || "Budget"])), [bs]);
 
   const txByType = (type: string) => (recent ?? []).filter((t) => t.type === type);
-  const txByMonthDay = (label: string) => {
+  const txByMonthDay = (label: string, type: string) => {
     const day = Number(label.replace(/\D/g, ""));
-    return (recent ?? []).filter((t) => {
-      const d = t.date?.slice(8, 10);
-      return d && day && Number(d) === day;
-    });
+    return (recent ?? []).filter((t) => t.type === type && t.date?.slice(0, 7) === from.slice(0, 7) && Number(t.date.slice(8, 10)) === day);
   };
-  const txByCategory = (name: string) => (recent ?? []).filter((t) => t.type !== "transfer" && catMap.get(t.category_id ?? "") === name);
+  const txByCategory = (name: string) => (recent ?? []).filter((t) => t.type === "expense" && catMap.get(t.category_id ?? "") === name);
   const txByBudget = (budgetId: string) => (recent ?? []).filter((t) => t.budget_id === budgetId);
 
   const openDetail = (title: string, items: Tx[], subtitle?: string) => setSheet({ title, subtitle, items });
@@ -73,7 +69,6 @@ export function DashboardContent({ ledger, from, to, monthLabel, year, income, e
             <Link href={`?m=${shift(year, Number(monthLabel.split("-")[1]) || 1, 1)}`} aria-label="Bulan berikutnya"><Icon n="right" /></Link>
           </div>
         </div>
-        <button type="button" data-open-tx><Icon n="plus" /> Transaksi</button>
       </div>
 
       <div className="banners">
@@ -86,18 +81,18 @@ export function DashboardContent({ ledger, from, to, monthLabel, year, income, e
       <section className="grid g4">
         {tile("Pemasukan", income, "var(--income)", "down", "Klik untuk detail", () => openDetail("Detail Pemasukan", txByType("income"), "Semua pemasukan"))}
         {tile("Pengeluaran", expense, "var(--expense)", "up", income ? `${Math.round((expense / income) * 100)}% dari pemasukan` : "Belum ada pemasukan", () => openDetail("Detail Pengeluaran", txByType("expense"), "Semua pengeluaran"))}
-        {tile("Selisih", net, net >= 0 ? "var(--warn)" : "var(--expense)", "scale", income ? `Saving rate ${Math.round((net / income) * 100)}%` : "Saving rate -", () => openDetail("Detail Selisih", [...txByType("income"), ...txByType("expense")] ))}
+        {tile("Selisih", net, net >= 0 ? "var(--warn)" : "var(--expense)", "scale", income ? `Saving rate ${Math.round((net / income) * 100)}%` : "Saving rate -", () => openDetail("Detail Selisih", [...txByType("income"), ...txByType("expense")]))}
         {tile("Transfer", trfSum, "var(--transfer)", "swap", `${trfCount} transaksi`, () => openDetail("Detail Transfer", txByType("transfer"), `${trfCount} transaksi`))}
       </section>
 
       <section className="grid g2e">
         <div className="card">
           <h2>Per Kategori</h2>
-          <CategoryPie data={((catTot ?? []) as Row[]).map((r) => ({ name: String(r.name), value: Number(r.total), href: `/transaksi?category=${encodeURIComponent(String(r.name))}&${qs}` }))} onCategoryClick={(d) => openDetail(`Kategori: ${d.name}`, txByCategory(d.name), `Total: ${rupiah(d.value)}`)} />
+          <CategoryPie data={((catTot ?? []) as Row[]).map((r) => ({ name: String(r.name), value: Number(r.total) }))} onCategoryClick={(d) => openDetail(`Kategori: ${d.name}`, txByCategory(d.name), `Total: ${rupiah(d.value)}`)} />
         </div>
         <div className="card">
           <h2>Tren Harian</h2>
-          <IncomeExpenseChart data={((series ?? []) as Row[]).map((r) => ({ label: String(r.bucket).slice(8), income: Number(r.income), expense: Number(r.expense), incomeHref: "#", expenseHref: "#" }))} onBarClick={(kind, label) => openDetail(`Detail ${kind === "income" ? "Pemasukan" : "Pengeluaran"} ${label}`, txByMonthDay(String(label)), `Hari ${label}`)} />
+          <IncomeExpenseChart data={((series ?? []) as Row[]).map((r) => ({ label: String(r.bucket).slice(8), income: Number(r.income), expense: Number(r.expense), incomeHref: "#", expenseHref: "#" }))} onBarClick={(kind, label) => openDetail(`Detail ${kind === "income" ? "Pemasukan" : "Pengeluaran"} ${label}`, txByMonthDay(String(label), kind), `Hari ${label}`)} />
         </div>
       </section>
 
@@ -108,7 +103,7 @@ export function DashboardContent({ ledger, from, to, monthLabel, year, income, e
         </div>
         <div className="card">
           <div className="between" style={{ marginBottom: 6 }}><h2 style={{ margin: 0 }}>Saldo per Wallet</h2><small className="muted mono">{rupiah(x.total_balance ?? 0)}</small></div>
-          {!wallets?.length ? <p className="muted">Belum ada dompet.</p> : wallets.map((w) => { const v = Number(w.balance); return <div key={w.wallet_id} className="wrow"><span>{w.name}</span><span className="t"><i style={{ width: `${Math.max(v > 0 ? 1.5 : 0, (Math.max(v, 0) / maxBal) * 100)}%` }} /></span><b className={v < 0 ? "neg" : ""}>{rupiah(v)}</b></div>; })}
+          {!wallets?.length ? <p className="muted">Belum ada dompet.</p> : wallets.map((w) => { const v = Number(w.balance); return <div key={w.wallet_id} className="wrow"><span>{w.name}</span><span className="mono">{rupiah(v)}</span></div>; })}
         </div>
       </section>
 
