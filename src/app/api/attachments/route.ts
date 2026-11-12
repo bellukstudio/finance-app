@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import sharp from "sharp";
 import { supabaseServer } from "@/lib/supabase/server";
 import { sniffMime } from "@/lib/finance";
 import { uploadReceipt, deleteReceipt } from "@/lib/cloudinary";
@@ -26,11 +27,35 @@ export async function POST(req: NextRequest) {
   if (!mime) return done(req, "Tipe file tidak didukung (JPEG, PNG, WebP, PDF).");
   const { data: tx } = await sb.from("transactions").select("id,family_id").eq("id", tid).maybeSingle();  // RLS: hanya keluarga sendiri
   if (!tx) return done(req, "Transaksi tidak ditemukan.");
+  // Kompresi gambar di sisi server (jika format gambar) sebelum dikirim ke Cloudinary
+  let uploadBytes = bytes;
+  let uploadMime = mime;
+  if (mime.startsWith("image/")) {
+    try {
+      let pipeline = sharp(Buffer.from(bytes))
+        .rotate()
+        .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true });
+      let optBuf: Buffer;
+      if (mime === "image/webp") {
+        optBuf = await pipeline.webp({ quality: 82, effort: 4 }).toBuffer();
+      } else if (mime === "image/png") {
+        optBuf = await pipeline.png({ compressionLevel: 8, palette: true, quality: 85 }).toBuffer();
+      } else {
+        optBuf = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer();
+      }
+      if (optBuf.length < bytes.length) {
+        uploadBytes = new Uint8Array(optBuf);
+      }
+    } catch (err) {
+      log("warn", "attachments.compress", { error: String(err) });
+    }
+  }
+
   // storage_path menyimpan public_id Cloudinary: receipts/<family>/<transaksi>/<uuid>
   let publicId: string;
-  try { publicId = (await uploadReceipt(bytes, tx.family_id, tx.id)).public_id; }
+  try { publicId = (await uploadReceipt(uploadBytes, tx.family_id, tx.id)).public_id; }
   catch (err) { log("error", "attachments.upload", { error: String(err) }); return done(req, "Gagal mengunggah ke penyimpanan nota."); }
-  const ins = await sb.from("attachments").insert({ family_id: tx.family_id, transaction_id: tx.id, storage_path: publicId, mime_type: mime, size_bytes: bytes.length, created_by: user.id });
+  const ins = await sb.from("attachments").insert({ family_id: tx.family_id, transaction_id: tx.id, storage_path: publicId, mime_type: uploadMime, size_bytes: uploadBytes.length, created_by: user.id });
   if (ins.error) { await deleteReceipt(publicId).catch(() => false); return done(req, "Gagal menyimpan metadata."); }
   return done(req, OK_MSG);
 }

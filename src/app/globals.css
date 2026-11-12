@@ -84,3 +84,59 @@ button.sc[aria-expanded=true]{background:var(--surface-2);box-shadow:0 0 0 1px v
 .ti .ti-t b,.ti .ti-t small{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 .ti .ti-amt{flex:none;max-width:none;overflow:visible;text-overflow:clip;white-space:nowrap}
 .ti .tag{max-width:none;flex:none}
+
+/* ── Popup Pratinjau Nota (Receipt Modal) ── */
+.receipt-backdrop{z-index:90;backdrop-filter:blur(8px);background:rgb(4 6 12/.78);animation:rcFadeIn .18s ease-out}
+@keyframes rcFadeIn{from{opacity:0}to{opacity:1}}
+.receipt-modal-box{max-width:760px;width:100%;max-height:92dvh;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgb(0 0 0/.55);border:1px solid var(--line);background:var(--surface)}
+.receipt-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--surface);flex:none;gap:12px}
+.receipt-head-info{display:flex;align-items:center;gap:12px;min-width:0}
+.receipt-icon-wrap{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--primary) 15%,transparent);color:var(--primary);flex:none}
+.receipt-icon-wrap .ico{width:20px;height:20px}
+.receipt-title{font-size:1.05rem;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.receipt-sub{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);flex-wrap:wrap;margin-top:2px}
+.receipt-amt{color:var(--text);font-weight:700}
+.receipt-fn{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.receipt-actions-top{display:flex;align-items:center;gap:6px;flex:none}
+.receipt-actions-top .ib{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);color:var(--text);background:var(--surface-2)}
+.receipt-actions-top .ib:hover{background:var(--surface);filter:none}
+.receipt-body{flex:1;min-height:280px;max-height:68dvh;background:#080c14;position:relative;overflow:auto;display:flex;align-items:center;justify-content:center;padding:16px}
+.receipt-img-canvas{width:100%;height:100%;min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.receipt-img{max-width:100%;max-height:58dvh;object-fit:contain;border-radius:8px;box-shadow:0 12px 40px rgb(0 0 0/.6);cursor:zoom-in;transition:transform .15s ease}
+.receipt-img-canvas.is-zoomed{display:block;text-align:center;overflow:auto}
+.receipt-img-canvas.is-zoomed .receipt-img{max-width:none;max-height:none;width:auto;cursor:zoom-out;margin:0 auto}
+.receipt-zoom-hint{position:absolute;bottom:10px;display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;background:rgb(0 0 0/.75);color:#fff;font-size:.72rem;font-weight:500;backdrop-filter:blur(4px);pointer-events:none}
+.receipt-zoom-hint .ico{width:14px;height:14px}
+.receipt-loading{color:var(--muted);display:flex;align-items:center;gap:8px;font-size:.85rem}
+.receipt-spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--primary);border-radius:50%;animation:rcSpin .8s linear infinite}
+@keyframes rcSpin{to{transform:rotate(360deg)}}
+.receipt-pdf-canvas{width:100%;height:100%;display:flex;flex-direction:column;gap:10px}
+.receipt-pdf-frame{width:100%;height:60dvh;min-height:420px;border:0;border-radius:8px;background:#fff}
+.receipt-pdf-footer-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgb(255 255 255/.05);border-radius:8px;flex-wrap:wrap}
+.receipt-pdf-acts{display:flex;gap:8px}
+.receipt-unsupported{padding:30px;text-align:center;color:var(--muted)}
+.receipt-footer{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-top:1px solid var(--line);background:var(--surface);flex:none;gap:12px;flex-wrap:wrap}
+.receipt-meta{display:flex;align-items:center;gap:8px}
+.receipt-badge{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);letter-spacing:.02em}
+.receipt-size{font-family:var(--font-mono),monospace;font-size:.74rem;color:var(--muted)}
+.receipt-foot-acts{display:flex;align-items:center;gap:8px}
+
+/* ── Item Nota & Kompresi di Transaksi / Modal ── */
+.tx-attachments-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tx-att-item{display:inline-flex;align-items:center;gap:4px;background:var(--surface-2);padding:3px 6px;border-radius:9px;border:1px solid var(--line)}
+.nota-preview-btn{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;padding:.3rem .6rem}
+.nota-preview-btn .ico{width:14px;height:14px;color:var(--primary)}
+.tx-upload-wrap{display:inline-flex;align-items:center;gap:6px}
+.nota-upload-btn{font-size:.78rem;padding:.3rem .6rem;display:inline-flex;align-items:center;gap:5px}
+.nota-upload-btn .ico{width:14px;height:14px}
+.tx-upload-status{font-size:.72rem;color:var(--primary);font-weight:600}
+.tx-upload-err{font-size:.72rem;color:var(--expense)}
+.nota-thumb-btn{all:unset;cursor:pointer;flex:none}
+.nota-thumb-btn:focus-visible{outline:2px solid var(--primary);border-radius:8px}
+.nota-compress-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);font-size:.82rem;font-weight:600}
+.spinner-sm{width:14px;height:14px;border:2px solid color-mix(in srgb,var(--primary) 30%,transparent);border-top-color:var(--primary);border-radius:50%;animation:rcSpin .7s linear infinite}
+@media(max-width:860px){
+  .receipt-modal-box{max-width:100%;border-radius:18px 18px 0 0;max-height:94dvh}
+  .receipt-body{max-height:64dvh;padding:10px}
+  .receipt-pdf-frame{height:52dvh;min-height:300px}
+}

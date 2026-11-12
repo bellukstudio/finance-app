@@ -17,12 +17,20 @@ function cl() {
   return cloudinary;
 }
 
-/** Unggah ke `receipts/<family>/<transaksi>/<uuid>`. PDF juga memakai resource_type "image" (Cloudinary memperlakukan PDF sebagai gambar). */
+/** Unggah ke `receipts/<family>/<transaksi>/<uuid>`. PDF juga memakai resource_type "image" (Cloudinary memperlakukan PDF sebagai gambar).
+ * Kompresi & optimasi otomatis Cloudinary (quality: auto) diterapkan untuk file gambar dan dokumen PDF. */
 export function uploadReceipt(bytes: Uint8Array, familyId: string, txId: string): Promise<UploadApiResponse> {
   const folder = `${RECEIPT_ROOT}/${familyId}/${txId}`;
   return new Promise((resolve, reject) => {
     cl().uploader.upload_stream(
-      { public_id: `${folder}/${crypto.randomUUID()}`, asset_folder: folder, resource_type: "image", type: "authenticated", overwrite: false },
+      {
+        public_id: `${folder}/${crypto.randomUUID()}`,
+        asset_folder: folder,
+        resource_type: "image",
+        type: "authenticated",
+        overwrite: false,
+        transformation: [{ quality: "auto" }],
+      },
       (err, r) => (err || !r ? reject(err ?? new Error("Upload Cloudinary gagal")) : resolve(r)),
     ).end(Buffer.from(bytes));
   });

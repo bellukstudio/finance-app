@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { saveTx } from "@/app/(app)/actions";
 import { Icon } from "./icons";
+import { ReceiptModal } from "./receipt-modal";
+import { compressReceiptFile, formatBytes, type CompressionResult } from "@/lib/client-compress";
 
 export type Opt = { id: string; name: string };
 export type CatOpt = Opt & { type: string };
@@ -22,13 +24,29 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
   const [cat, setCat] = useState(""), [budget, setBudget] = useState(""), [note, setNote] = useState("");
   const [err, setErr] = useState<string | null>(null), [pending, start] = useTransition();
   const [idem] = useState(() => crypto.randomUUID());
-  const [file, setFile] = useState<File | null>(null), [thumb, setThumb] = useState<string | null>(null), [saved, setSaved] = useState(false), fileRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (!file || !file.type.startsWith("image/")) { setThumb(null); return; } const u = URL.createObjectURL(file); setThumb(u); return () => URL.revokeObjectURL(u); }, [file]);
-  function pick(f: File | undefined) {
+  const [file, setFile] = useState<File | null>(null), [thumb, setThumb] = useState<string | null>(null), [saved, setSaved] = useState(false);
+  const [compInfo, setCompInfo] = useState<CompressionResult | null>(null), [compressing, setCompressing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false), [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!file) { setThumb(null); setPreviewUrl(null); return; }
+    const u = URL.createObjectURL(file);
+    setPreviewUrl(u);
+    if (file.type.startsWith("image/")) setThumb(u);
+    else setThumb(null);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  async function pick(f: File | undefined) {
     if (!f) return;
     if (!OK_TYPES.includes(f.type)) return setErr("Tipe file tidak didukung (JPEG, PNG, WebP, PDF).");
     if (f.size > MAX_FILE) return setErr("Ukuran file maksimal 4 MB.");
-    setErr(null); setFile(f);
+    setErr(null); setCompressing(true);
+    try {
+      const res = await compressReceiptFile(f);
+      setCompInfo(res); setFile(res.file);
+    } catch {
+      setCompInfo(null); setFile(f);
+    } finally { setCompressing(false); }
   }
   const list = useMemo(() => cats.filter((c) => c.type === kind), [cats, kind]);
   const bl = useMemo(() => budgets.filter((b) => date >= b.start && date <= b.end), [budgets, date]);
@@ -84,18 +102,75 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
           <label className="fld"><span>Catatan</span><input value={note} maxLength={200} placeholder="Opsional…" onChange={(e) => setNote(e.target.value)} /></label>
           <div className="fld"><span>Nota (opsional)</span>
             <input ref={fileRef} type="file" hidden accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
-            {file ? <div className="nota">
-              {thumb ? <img src={thumb} alt="Pratinjau nota" /> : <span className="nota-ico"><Icon n="list" /></span>}
-              <span className="nota-t"><b>{file.name}</b><small className="muted">{kb(file.size)}</small></span>
-              <button type="button" className="ib del" aria-label="Hapus nota" disabled={pending || saved} onClick={() => setFile(null)}><Icon n="trash" /></button>
-            </div> : <button type="button" className="ghost upl" onClick={() => fileRef.current?.click()}><Icon n="plus" /> Pilih foto atau PDF nota</button>}
-            <small className="muted">JPEG, PNG, WebP, atau PDF. Maksimal 4 MB.</small>
+            {compressing ? (
+              <div className="nota-compress-bar">
+                <span className="spinner-sm" />
+                <span>Mengompresi file nota…</span>
+              </div>
+            ) : file ? (
+              <div className="nota">
+                <button
+                  type="button"
+                  className="nota-thumb-btn"
+                  onClick={() => setShowPreview(true)}
+                  title="Klik untuk membuka popup pratinjau nota"
+                >
+                  {thumb ? <img src={thumb} alt="Pratinjau nota" /> : <span className="nota-ico"><Icon n="fileText" /></span>}
+                </button>
+                <span className="nota-t" onClick={() => setShowPreview(true)} style={{ cursor: "pointer" }}>
+                  <b>{file.name}</b>
+                  <small className="muted">
+                    {compInfo?.isCompressed
+                      ? `Terkompresi: ${formatBytes(compInfo.originalSize)} → ${formatBytes(compInfo.compressedSize)} (-${compInfo.savedPercent}%)`
+                      : file.type === "application/pdf"
+                      ? `${formatBytes(file.size)} • PDF (optimasi cloud)`
+                      : formatBytes(file.size)}
+                  </small>
+                </span>
+                <button
+                  type="button"
+                  className="ib"
+                  onClick={() => setShowPreview(true)}
+                  title="Buka popup pratinjau nota"
+                  aria-label="Buka popup pratinjau nota"
+                >
+                  <Icon n="eye" />
+                </button>
+                <button
+                  type="button"
+                  className="ib del"
+                  aria-label="Hapus nota"
+                  disabled={pending || saved}
+                  onClick={() => { setFile(null); setCompInfo(null); }}
+                >
+                  <Icon n="trash" />
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="ghost upl" onClick={() => fileRef.current?.click()}>
+                <Icon n="plus" /> Pilih foto atau PDF nota
+              </button>
+            )}
+            <small className="muted">JPEG, PNG, WebP, atau PDF (maks 4 MB). Otomatis dikompresi sebelum diunggah.</small>
           </div>
           {err && <p className="err" role="alert">{err}</p>}
           {saved ? <button type="button" className="save" onClick={onClose}>Selesai</button>
             : <button className="save" disabled={pending || !amount} style={{ opacity: 1, filter: "none" }}><Icon n="save" /> {pending ? (file ? "Menyimpan & mengunggah…" : "Menyimpan…") : "Simpan"}</button>}
         </div>
       </form>
+
+      {showPreview && previewUrl && file && (
+        <ReceiptModal
+          url={previewUrl}
+          filename={file.name}
+          mimeType={file.type}
+          sizeBytes={file.size}
+          title={note || "Pratinjau Nota"}
+          amount={amount}
+          date={date}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }

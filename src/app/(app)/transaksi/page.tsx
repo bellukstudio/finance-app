@@ -4,6 +4,7 @@ import { pgMessage } from "@/lib/errors";
 import { rupiah } from "@/lib/format";
 import { Icon } from "@/components/icons";
 import { TxRow } from "@/components/tx-row";
+import { TxAttachments } from "@/components/tx-attachments";
 
 const PAGE = 30;
 async function del(fd: FormData) {
@@ -41,7 +42,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
     sb.from("budgets").select("id,name,category_id").eq("family_id", familyId).is("deleted_at", null)]);
   const cn = new Map(cats?.map(c => [c.id, c.name]));
   const maps = { wallets: new Map(wallets?.map(w => [w.id, w.name])), cats: cn, budgets: new Map((bs ?? []).map(b => [b.id, b.name || (b.category_id && cn.get(b.category_id)) || "Budget"])) };
-  const { data: atts } = txs?.length ? await sb.from("attachments").select("id,transaction_id,mime_type").in("transaction_id", txs.map(t => t.id)).is("deleted_at", null) : { data: [] as { id: string; transaction_id: string; mime_type: string }[] };
+  const { data: atts } = txs?.length ? await sb.from("attachments").select("id,transaction_id,mime_type,size_bytes").in("transaction_id", txs.map(t => t.id)).is("deleted_at", null) : { data: [] as { id: string; transaction_id: string; mime_type: string; size_bytes?: number }[] };
   const pages = Math.max(1, Math.ceil((count ?? 0) / PAGE));
   const link = (p: number) => `?${new URLSearchParams({ ...Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "e" && k !== "page")) as Record<string, string>, page: String(p) })}`;
   const groups = new Map<string, NonNullable<typeof txs>>();
@@ -65,8 +66,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <div className="tx-actions">
             {canWrite(role) && t.type !== "transfer" && <form action={dup}><input type="hidden" name="id" value={t.id} /><button className="ghost sm">Duplikasi</button></form>}
             {canManage(role) && <form action={del}><input type="hidden" name="id" value={t.id} /><button className="danger sm" data-confirm="Saldo wallet dan pemakaian budget akan menyesuaikan." data-confirm-title="Hapus transaksi ini?" data-confirm-label="Hapus">Hapus</button></form>}
-            {atts?.filter(x => x.transaction_id === t.id).map(x => <span key={x.id} className="tx-actions" style={{ margin: 0, padding: 0, border: 0 }}><a href={`/api/attachments/${x.id}`} target="_blank">Lihat nota</a><a href={`/api/attachments/${x.id}?dl=1`}>Unduh</a>{canManage(role) && <form action={`/api/attachments/${x.id}`} method="post"><button className="danger sm" data-confirm="File nota akan dihapus permanen." data-confirm-title="Hapus nota ini?" data-confirm-label="Hapus nota">Hapus nota</button></form>}</span>)}
-            {canWrite(role) && <form action="/api/attachments" method="post" encType="multipart/form-data" className="tx-actions" style={{ margin: 0, padding: 0, border: 0 }}><input type="hidden" name="transaction_id" value={t.id} /><input type="file" name="file" accept="image/jpeg,image/png,image/webp,application/pdf" required /><button className="ghost sm">Unggah nota</button></form>}
+            <TxAttachments
+              transactionId={t.id}
+              transactionTitle={t.description || t.note || maps.cats.get(t.category_id ?? "") || (t.type === "transfer" ? "Transfer" : "Transaksi")}
+              amount={t.amount}
+              date={t.date}
+              attachments={atts?.filter(x => x.transaction_id === t.id) ?? []}
+              canWrite={canWrite(role)}
+              canManage={canManage(role)}
+            />
           </div></TxRow>)}
       </section>;
     })}
