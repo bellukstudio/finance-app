@@ -140,3 +140,34 @@ button.sc[aria-expanded=true]{background:var(--surface-2);box-shadow:0 0 0 1px v
   .receipt-body{max-height:64dvh;padding:10px}
   .receipt-pdf-frame{height:52dvh;min-height:300px}
 }
+/* Tambahkan di globals.css (paling bawah) */
+
+.ico {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: block;
+}
+
+/* Tombol khusus ikon (Unduh / Hapus lampiran) */
+button.icon,
+.btn.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  font-size: 0; /* teks kosong tidak ikut menggeser ikon */
+}
+
+button.icon .ico,
+.btn.icon .ico {
+  width: 18px;
+  height: 18px;
+}
+
+.danger .ico {
+  color: var(--danger, #ef4444);
+}
