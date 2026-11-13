@@ -58,6 +58,15 @@ export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const cspHeader = process.env.CSP_REPORT_ONLY === "1" ? "content-security-policy-report-only" : "content-security-policy";
 
+  // Jika Redirect URL di Supabase tidak cocok dengan redirectTo, Supabase mengirim pengguna ke Site URL
+  // dengan ?code=... (mis. "/?code=..."), sehingga login "tidak masuk ke beranda". Teruskan ke /auth/callback
+  // supaya kode tetap ditukar menjadi sesi (cookie PKCE ada di domain yang sama).
+  if ((path === "/" || path === "/login") && req.nextUrl.searchParams.has("code")) {
+    const u = req.nextUrl.clone();
+    u.pathname = "/auth/callback";
+    return harden(NextResponse.redirect(u), csp, path);
+  }
+
   // Dihitung ulang tiap kali agar cookie sesi yang baru di-refresh ikut diteruskan ke render.
   const forward = () => {
     const h = new Headers(req.headers);
