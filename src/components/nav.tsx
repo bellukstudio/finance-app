@@ -65,7 +65,7 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, ledger
   useEffect(() => { try { setCol(localStorage.getItem("sb-collapsed") === "1"); } catch {} }, []);
   const setCollapsed = (v: boolean) => { setCol(v); setUm(false); try { localStorage.setItem("sb-collapsed", v ? "1" : "0"); } catch {} };
   useEffect(() => setUm(false), [path]);
-  useEffect(() => { if (!um) return; const h = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest(".uc")) setUm(false); }; const k = (e: KeyboardEvent) => e.key === "Escape" && setUm(false); document.addEventListener("mousedown", h); document.addEventListener("keydown", k); return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); }; }, [um]);
+  useEffect(() => { if (!um) return; const h = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest(".uc, .cf-back")) setUm(false); }; const k = (e: KeyboardEvent) => e.key === "Escape" && setUm(false); document.addEventListener("mousedown", h); document.addEventListener("keydown", k); return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); }; }, [um]);
   const [ask, setAsk] = useState<{ title: string; message?: string; label?: string; tone: "danger" | "default"; btn: HTMLButtonElement } | null>(null);
   useEffect(() => {
     const h = (e: MouseEvent) => {
