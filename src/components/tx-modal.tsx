@@ -18,9 +18,9 @@ const ACCEPT = "image/*,application/pdf";
 const kb = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} KB`);
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 
-export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; cats: CatOpt[]; budgets: BudgetOpt[]; onClose: () => void }) {
+export function TxModal({ wallets, cats, budgets, initialAmount, onClose }: { wallets: Opt[]; cats: CatOpt[]; budgets: BudgetOpt[]; initialAmount?: string; onClose: () => void }) {
   const [kind, setKind] = useState<Kind>("expense");
-  const [amount, setAmount] = useState(""), [date, setDate] = useState(today()), [wallet, setWallet] = useState(wallets[0]?.id ?? ""), [to, setTo] = useState(wallets[1]?.id ?? wallets[0]?.id ?? "");
+  const [amount, setAmount] = useState(initialAmount ?? ""), [date, setDate] = useState(today()), [wallet, setWallet] = useState(wallets[0]?.id ?? ""), [to, setTo] = useState(wallets[1]?.id ?? wallets[0]?.id ?? "");
   const [cat, setCat] = useState(""), [budget, setBudget] = useState(""), [note, setNote] = useState("");
   const [err, setErr] = useState<string | null>(null), [pending, start] = useTransition();
   const [idem] = useState(() => crypto.randomUUID());

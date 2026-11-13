@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon } from "./icons";
 
 type Operator = "+" | "−" | "×" | "÷";
 type Entry = { expression: string; result: string; createdAt: number };
@@ -14,6 +15,7 @@ export function CalculatorPopover({ onClose }: { onClose: () => void }) {
   const [operator, setOperator] = useState<Operator | null>(null);
   const [replace, setReplace] = useState(false);
   const [history, setHistory] = useState<Entry[]>([]);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -58,6 +60,31 @@ export function CalculatorPopover({ onClose }: { onClose: () => void }) {
     else if (!display.includes(".")) setDisplay((current) => current + ".");
   };
 
+  const valid = display !== "Error" && Number.isFinite(Number(display));
+  const copyResult = async () => {
+    if (!valid) return;
+    try { await navigator.clipboard.writeText(display); }
+    catch {
+      const ta = document.createElement("textarea");
+      ta.value = display; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch {}
+      ta.remove();
+    }
+    setCopied(true); setTimeout(() => setCopied(false), 1500);
+  };
+  const useInTransaction = () => {
+    if (!valid) return;
+    const amount = Math.round(Math.abs(Number(display)));
+    if (amount <= 0) return;
+    window.dispatchEvent(new CustomEvent("calc:use-in-tx", { detail: { amount: String(amount) } }));
+    onClose();
+  };
+  const clearHistory = () => {
+    setHistory([]);
+    try { localStorage.removeItem(HISTORY_KEY); } catch {}
+  };
+
   const keys: { text: string; run: () => void; className?: string }[] = [
     { text: "AC", run: clear, className: "muted" }, { text: "⌫", run: backspace, className: "muted" }, { text: "%", run: () => setDisplay(format(Number(display) / 100)), className: "muted" }, { text: "÷", run: () => choose("÷"), className: "op" },
     { text: "7", run: () => digit("7") }, { text: "8", run: () => digit("8") }, { text: "9", run: () => digit("9") }, { text: "×", run: () => choose("×"), className: "op" },
@@ -79,6 +106,13 @@ export function CalculatorPopover({ onClose }: { onClose: () => void }) {
       <output aria-live="polite">{display}</output>
       <div className="calc-keys">
         {keys.map((key) => <button key={key.text} type="button" className={key.className ?? ""} onClick={key.run}>{key.text}</button>)}
+      </div>
+      <div className="calc-actions">
+        <button type="button" className="calc-del" onClick={clearHistory} disabled={!history.length}><Icon n="trash" /> Hapus riwayat</button>
+        <div className="calc-actions-row">
+          <button type="button" className="calc-copy" onClick={copyResult} disabled={!valid}><Icon n={copied ? "check" : "copy"} /> {copied ? "Tersalin" : "Copy"}</button>
+          <button type="button" className="calc-use" onClick={useInTransaction} disabled={!valid || Math.round(Math.abs(Number(display))) <= 0}><Icon n="plus" /> Pakai di Transaksi</button>
+        </div>
       </div>
       <details className="calc-history">
         <summary>Riwayat kalkulasi ({history.length})</summary>
@@ -111,6 +145,14 @@ export function CalculatorPopover({ onClose }: { onClose: () => void }) {
         .calc-keys button.muted{background:var(--surface-2)}
         .calc-keys button.op{background:color-mix(in srgb, var(--primary) 18%, var(--surface));color:var(--primary)}
         .calc-keys button.equal{background:var(--primary);color:var(--primary-ink)}
+        .calc-actions{display:grid;gap:8px;margin-top:10px}
+        .calc-actions-row{display:grid;grid-template-columns:auto 1fr;gap:8px}
+        .calc-actions button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px;border-radius:10px;font-size:.9rem;font-weight:650;white-space:nowrap}
+        .calc-actions button :global(svg){width:16px;height:16px;flex:none}
+        .calc-actions button:disabled{opacity:.45;cursor:not-allowed}
+        .calc-del{background:color-mix(in srgb,var(--expense) 14%,var(--surface));color:var(--expense);border:1px solid color-mix(in srgb,var(--expense) 30%,transparent)}
+        .calc-copy{background:var(--surface-2);color:var(--text);border:1px solid var(--line)}
+        .calc-use{background:var(--primary);color:var(--primary-ink)}
         .calc-history{margin-top:10px;font-size:.82rem}
         .calc-history summary{cursor:pointer;color:var(--muted)}
         .calc-history ol{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px;max-height:140px;overflow:auto}
