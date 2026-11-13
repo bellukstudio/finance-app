@@ -47,8 +47,8 @@ export const Icon = ({ n, className = "ico" }: { n: IconName; className?: string
     strokeLinejoin="round"
     aria-hidden="true"
     focusable="false"
-    // FIX: cegah ikon menyusut jadi titik di dalam tombol flex
-    style={{ flexShrink: 0, display: "block", minWidth: 18, minHeight: 18 }}
+    // FIX: cegah ikon menyusut di dalam tombol flex (ukuran diatur lewat CSS .ico)
+    style={{ flexShrink: 0, display: "block" }}
   >
     <path d={P[n]} />
   </svg>
