@@ -14,7 +14,9 @@ const cookieOptions: CookieOptions = {
 
 /** Origin Supabase (signed URL lampiran lama + redirect OAuth) untuk whitelist CSP. */
 const supabaseOrigin = (() => { try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).origin; } catch { return ""; } })();
-const CLOUDINARY = "https://api.cloudinary.com https://res.cloudinary.com";
+// Nota diunduh lewat redirect ke Cloudinary (api.cloudinary.com, lalu CDN res / res-N / api-<region>).
+// Wildcard subdomain supaya rantai redirect tidak terblokir CSP.
+const CLOUDINARY = "https://*.cloudinary.com";
 
 function buildCsp(nonce: string) {
   const sb = supabaseOrigin;

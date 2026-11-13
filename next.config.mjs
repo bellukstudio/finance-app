@@ -21,11 +21,9 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // sw.js dikecualikan dari middleware (harus bisa diambil tanpa sesi), jadi header dipasang di sini.
         source: "/sw.js",
         headers: [
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, // update SW selalu terambil
-          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
           { key: "X-Content-Type-Options", value: "nosniff" },
         ],
       },
