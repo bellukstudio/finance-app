@@ -1,14 +1,27 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-redirect";
 import { log } from "@/lib/logger";
+
+const NEXT_COOKIE = "auth_next";
+
 export async function GET(req: NextRequest) {
+  const jar = await cookies();
+  // safeNext menolak //host, /\host, skema, dan karakter kontrol (open redirect).
+  const next = safeNext(req.nextUrl.searchParams.get("next") ?? jar.get(NEXT_COOKIE)?.value);
+  jar.set(NEXT_COOKIE, "", { path: "/auth", maxAge: 0 });
+  const toLogin = (reason: string) => NextResponse.redirect(new URL(`/login?error=${reason}`, req.nextUrl.origin));
+
+  if (req.nextUrl.searchParams.get("error")) {
+    log("warn", "auth.callback", { provider_error: req.nextUrl.searchParams.get("error_description") ?? req.nextUrl.searchParams.get("error") });
+    return toLogin("denied");
+  }
   const code = req.nextUrl.searchParams.get("code");
   if (code) {
     const sb = await supabaseServer();
     const { error } = await sb.auth.exchangeCodeForSession(code);
-    if (error) { log("warn", "auth.callback", { error: error.message }); return NextResponse.redirect(new URL("/login", req.nextUrl.origin)); }
+    if (error) { log("warn", "auth.callback", { error: error.message }); return toLogin("auth"); }
   }
-  // safeNext menolak //host, /\host, skema, dan karakter kontrol (open redirect).
-  return NextResponse.redirect(new URL(safeNext(req.nextUrl.searchParams.get("next")), req.nextUrl.origin));
+  return NextResponse.redirect(new URL(next, req.nextUrl.origin));
 }
