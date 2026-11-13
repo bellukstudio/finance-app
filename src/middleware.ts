@@ -44,7 +44,7 @@ function harden(res: NextResponse, csp: string, path: string) {
   res.headers.set("X-Frame-Options", "DENY");
   // Link undangan membawa token di URL: jangan bocor lewat Referer.
   res.headers.set("Referrer-Policy", path.startsWith("/undangan") ? "no-referrer" : "strict-origin-when-cross-origin");
-  res.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()");
+  res.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=(), payment=(), usb=()");
   res.headers.set("Cross-Origin-Opener-Policy", "same-origin");
   res.headers.set("X-DNS-Prefetch-Control", "off");
   res.headers.set("X-Permitted-Cross-Domain-Policies", "none");
