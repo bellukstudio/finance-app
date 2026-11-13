@@ -61,7 +61,7 @@ const ThemeIcons = () => <span className="ti2" aria-hidden="true"><Icon n="moon"
 type Props = { unread: number; signOut: () => Promise<void>; wallets: Opt[]; cats: CatOpt[]; budgets: BudgetOpt[]; ledger: Ledger; ledgers: LedgerOpt[]; user: { name: string; role: string }; switchLedger: (fd: FormData) => Promise<void>; children: React.ReactNode; };
 export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, ledgers, user, switchLedger, children }: Props) {
   const path = usePathname();
-  const [menu, setMenu] = useState(false), [tx, setTx] = useState(false), [col, setCol] = useState(false), [um, setUm] = useState(false);
+  const [menu, setMenu] = useState(false), [tx, setTx] = useState(false), [txAmt, setTxAmt] = useState(""), [col, setCol] = useState(false), [um, setUm] = useState(false);
   useEffect(() => { try { setCol(localStorage.getItem("sb-collapsed") === "1"); } catch {} }, []);
   const setCollapsed = (v: boolean) => { setCol(v); setUm(false); try { localStorage.setItem("sb-collapsed", v ? "1" : "0"); } catch {} };
   useEffect(() => setUm(false), [path]);
@@ -79,6 +79,7 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, ledger
   }, []);
   const cur = (h: string) => (path === h || path.startsWith(h + "/") ? "page" : undefined);
   useEffect(() => { const h = (e: MouseEvent) => { if ((e.target as HTMLElement).closest("[data-open-tx]")) { setMenu(false); setTx(true); } }; document.addEventListener("click", h); return () => document.removeEventListener("click", h); }, []);
+  useEffect(() => { const h = (e: Event) => { const a = (e as CustomEvent<{ amount?: string }>).detail?.amount; setMenu(false); setTxAmt(a ?? ""); setTx(true); }; window.addEventListener("calc:use-in-tx", h); return () => window.removeEventListener("calc:use-in-tx", h); }, []);
   const personal = ledger === "personal", brand = personal ? "Catatan Pribadi" : "Family Finance";
   const links = (onClick?: () => void) => groupsFor(ledger).map(([g, items]) => (
     <div key={g} className="ng"><div className="grp"><span>{g}</span></div>
@@ -133,7 +134,7 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, ledger
         </div>
       )}
       {ask && <ConfirmDialog title={ask.title} message={ask.message} confirmLabel={ask.label ?? "Ya, lanjutkan"} tone={ask.tone} onCancel={() => setAsk(null)} onConfirm={() => { const b = ask.btn; setAsk(null); b.form?.requestSubmit(b); }} />}
-      {tx && <TxModal wallets={wallets} cats={cats} budgets={budgets} onClose={() => setTx(false)} />}
+      {tx && <TxModal wallets={wallets} cats={cats} budgets={budgets} initialAmount={txAmt} onClose={() => { setTx(false); setTxAmt(""); }} />}
     </div>
   );
 }
