@@ -14,7 +14,7 @@ const TABS: { k: Kind; label: string; icon: "down" | "up" | "swap"; c: string }[
   { k: "expense", label: "Pengeluaran", icon: "up", c: "var(--expense)" },
   { k: "transfer", label: "Transfer", icon: "swap", c: "var(--transfer)" },
 ];
-const MAX_FILE = 4_000_000, OK_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const ACCEPT = "image/*,application/pdf";
 const kb = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} KB`);
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 
@@ -38,14 +38,14 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
   }, [file]);
   async function pick(f: File | undefined) {
     if (!f) return;
-    if (!OK_TYPES.includes(f.type)) return setErr("Tipe file tidak didukung (JPEG, PNG, WebP, PDF).");
-    if (f.size > MAX_FILE) return setErr("Ukuran file maksimal 4 MB.");
     setErr(null); setCompressing(true);
     try {
+      // Kompres dulu, baru validasi ukuran: foto kamera biasanya > 4 MB sebelum dikompres.
       const res = await compressReceiptFile(f);
+      if (res.error) { setCompInfo(null); setFile(null); return setErr(res.error); }
       setCompInfo(res); setFile(res.file);
     } catch {
-      setCompInfo(null); setFile(f);
+      setCompInfo(null); setFile(null); setErr("Gagal memproses file nota. Coba lagi.");
     } finally { setCompressing(false); }
   }
   const list = useMemo(() => cats.filter((c) => c.type === kind), [cats, kind]);
@@ -101,7 +101,7 @@ export function TxModal({ wallets, cats, budgets, onClose }: { wallets: Opt[]; c
           </div>}
           <label className="fld"><span>Catatan</span><input value={note} maxLength={200} placeholder="Opsional…" onChange={(e) => setNote(e.target.value)} /></label>
           <div className="fld"><span>Nota (opsional)</span>
-            <input ref={fileRef} type="file" hidden accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+            <input ref={fileRef} type="file" hidden accept={ACCEPT} onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
             {compressing ? (
               <div className="nota-compress-bar">
                 <span className="spinner-sm" />

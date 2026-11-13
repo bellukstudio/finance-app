@@ -5,12 +5,16 @@ import { sameOrigin } from "@/lib/same-origin";
 import { isCloudinaryPath, receiptUrl, deleteReceipt } from "@/lib/cloudinary";
 import { log } from "@/lib/logger";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const FORMAT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" };
 
 // Pratinjau/unduh: URL bertanda tangan 60 detik (RLS memastikan hanya anggota keluarga yang lolos).
 // Lampiran lama (path Supabase Storage) tetap dilayani lewat signed URL Supabase.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const sb = await supabaseServer();
+  const { id } = await params; if (!UUID.test(id)) return new NextResponse("Not found", { status: 404 });
+  const sb = await supabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return new NextResponse("Unauthorized", { status: 401 });
   const { data: a } = await sb.from("attachments").select("storage_path,mime_type").eq("id", id).is("deleted_at", null).maybeSingle();
   if (!a) return new NextResponse("Not found", { status: 404 });
   const dl = req.nextUrl.searchParams.has("dl");
@@ -20,13 +24,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       res.headers.set("Cache-Control", "private, no-store"); return res;
     }
     const { data } = await sb.storage.from("receipts").createSignedUrl(a.storage_path, 60, dl ? { download: true } : undefined);
-    return data ? NextResponse.redirect(data.signedUrl) : new NextResponse("Error", { status: 500 });
+    if (!data) return new NextResponse("Error", { status: 500 });
+    const res = NextResponse.redirect(data.signedUrl); res.headers.set("Cache-Control", "private, no-store"); return res;
   } catch (err) { log("error", "attachments.get", { error: String(err) }); return new NextResponse("Error", { status: 500 }); }
 }
 // Hapus: metadata dulu (RLS: Owner/Admin), lalu file. File Supabase yatim dibersihkan job; file Cloudinary dihapus langsung.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!sameOrigin(req)) return new NextResponse("Forbidden", { status: 403 });
-  const { id } = await params; const sb = await supabaseServer();
+  const { id } = await params; if (!UUID.test(id)) return new NextResponse("Not found", { status: 404 });
+  const sb = await supabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return new NextResponse("Unauthorized", { status: 401 });
   const { data: a } = await sb.from("attachments").select("storage_path").eq("id", id).maybeSingle();
   const msg = async () => {
     if (!a) return "Lampiran tidak ditemukan.";

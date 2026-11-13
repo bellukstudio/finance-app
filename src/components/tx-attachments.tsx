@@ -48,19 +48,19 @@ export function TxAttachments({
     setUploadStatus("Memeriksa file…");
 
     try {
-      let fileToUpload = file;
-      if (file.type.startsWith("image/")) {
-        setUploadStatus("Mengompresi gambar nota…");
-        const comp = await compressReceiptFile(file);
-        fileToUpload = comp.file;
-        if (comp.isCompressed) {
-          setUploadStatus(`Terkompresi (${formatBytes(comp.originalSize)} → ${formatBytes(comp.compressedSize)}). Mengunggah…`);
-        } else {
-          setUploadStatus("Mengunggah nota ke Cloudinary…");
-        }
-      } else {
-        setUploadStatus("Mengunggah dokumen PDF ke Cloudinary…");
+      setUploadStatus(file.type === "application/pdf" ? "Memeriksa PDF…" : "Mengompresi gambar nota…");
+      const comp = await compressReceiptFile(file);
+      if (comp.error) {
+        setErr(comp.error);
+        setUploadStatus(null);
+        return;
       }
+      const fileToUpload = comp.file;
+      setUploadStatus(
+        comp.isCompressed
+          ? `Terkompresi (${formatBytes(comp.originalSize)} → ${formatBytes(comp.compressedSize)}). Mengunggah…`
+          : "Mengunggah nota…",
+      );
 
       startTransition(async () => {
         try {
@@ -145,7 +145,7 @@ export function TxAttachments({
             ref={fileInputRef}
             type="file"
             hidden
-            accept="image/jpeg,image/png,image/webp,application/pdf"
+            accept="image/*,application/pdf"
             onChange={handleFilePicked}
           />
 

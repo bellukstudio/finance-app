@@ -1,14 +1,18 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getOptionalCtx } from "@/lib/context";
+import { rateLimit } from "@/lib/rate-limit";
 import { todayJakarta } from "@/lib/period";
 import { DashboardInteractions } from "@/components/dashboard-interactions";
 
 async function createFamily(fd: FormData) {
   "use server";
   const name = String(fd.get("name") ?? "").trim();
-  if (name.length < 2) return;
+  if (name.length < 2 || name.length > 60) return;
   const sb = await supabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) redirect("/login");
+  if (!(await rateLimit(sb, "create_group", 5, 3600))) return;
   await sb.rpc("create_family_with_defaults", { fname: name });
   redirect("/dashboard");
 }

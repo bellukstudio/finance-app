@@ -7,16 +7,21 @@ import { TxRow } from "@/components/tx-row";
 import { TxAttachments } from "@/components/tx-attachments";
 
 const PAGE = 30;
+const isUuid = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 async function del(fd: FormData) {
   "use server";
-  const { sb, user, familyId } = await getCtx();
-  const { error } = await sb.from("transactions").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
+  const { sb, user, familyId, role } = await getCtx();
+  if (!canWrite(role)) return back("/transaksi", "Viewer tidak dapat mengubah data.");
+  const tid = fd.get("id"); if (!isUuid(tid)) return back("/transaksi", "Input tidak valid.");
+  const { error } = await sb.from("transactions").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", tid).eq("family_id", familyId);
   revalidatePath("/", "layout"); back("/transaksi", pgMessage(error));
 }
 async function dup(fd: FormData) {
   "use server";
-  const { sb, user, familyId } = await getCtx();
-  const { data: t } = await sb.from("transactions").select("type,amount,wallet_id,category_id,description,note,budget_id").eq("id", String(fd.get("id"))).eq("family_id", familyId).single();
+  const { sb, user, familyId, role } = await getCtx();
+  if (!canWrite(role)) return back("/transaksi", "Viewer tidak dapat mengubah data.");
+  const did = fd.get("id"); if (!isUuid(did)) return back("/transaksi", "Input tidak valid.");
+  const { data: t } = await sb.from("transactions").select("type,amount,wallet_id,category_id,description,note,budget_id").eq("id", did).eq("family_id", familyId).single();
   if (!t || t.type === "transfer") return back("/transaksi", "Transfer tidak dapat diduplikasi dari sini.");
   const { error } = await sb.from("transactions").insert({ ...t, date: new Date().toISOString().slice(0, 10), family_id: familyId, created_by: user.id });
   revalidatePath("/", "layout"); back("/transaksi", pgMessage(error));

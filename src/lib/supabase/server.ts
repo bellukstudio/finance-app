@@ -8,6 +8,8 @@ const cookieOptions: CookieOptions = {
   path: "/",
   sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
+  // Tidak ada browser client Supabase di app ini, jadi token sesi tidak perlu terbaca JavaScript (mitigasi XSS).
+  httpOnly: true,
 };
 
 export async function supabaseServer() {
@@ -18,7 +20,7 @@ export async function supabaseServer() {
       getAll: () => store.getAll(),
       setAll: (list: { name: string; value: string; options: CookieOptions }[]) => {
         try {
-          list.forEach(({ name, value, options }) => store.set(name, value, { ...cookieOptions, ...options }));
+          list.forEach(({ name, value, options }) => store.set(name, value, { ...cookieOptions, ...options, httpOnly: true, secure: cookieOptions.secure }));
         } catch {
           // Server Components cannot write cookies; middleware refreshes them on requests.
         }

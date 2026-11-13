@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { getCtx, canWrite, canManage, back } from "@/lib/context";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { pgMessage } from "@/lib/errors";
+import { rateLimit } from "@/lib/rate-limit";
 import { rupiah, tanggal } from "@/lib/format";
 import { todayJakarta } from "@/lib/period";
 import { DataTable, type DTRow } from "@/components/data-table";
@@ -29,10 +30,12 @@ async function toggle(fd: FormData) {
 }
 async function runNow() {
   "use server";
-  const { role } = await getCtx();
+  const { sb, role } = await getCtx();
   if (!canManage(role)) return back("/berulang", "Hanya Owner/Admin.");
-  const { data, error } = await supabaseAdmin().rpc("run_recurring");  // idempotent
-  revalidatePath("/berulang"); back("/berulang", error ? "Gagal menjalankan." : `${data ?? 0} transaksi baru dibuat.`);
+  // run_recurring memakai service role dan berjalan untuk SEMUA keluarga: batasi frekuensinya.
+  if (!(await rateLimit(sb, "run_recurring", 3, 300, { failClosed: true }))) return back("/berulang", "Terlalu sering, coba lagi beberapa menit lagi.");
+  const { error } = await supabaseAdmin().rpc("run_recurring");  // idempotent
+  revalidatePath("/berulang"); back("/berulang", error ? "Gagal menjalankan." : "Transaksi berulang telah diproses.");
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
