@@ -171,3 +171,35 @@ button.icon .ico,
 .danger .ico {
   color: var(--danger, #ef4444);
 }
+/* Tempel di PALING BAWAH src/app/globals.css (ganti isi icon-buttons.css sebelumnya) */
+
+/* Tombol ikon kecil (Unduh / Hapus nota): ukuran tetap, ikon tepat di tengah */
+.tx-att-item .ib,
+.tx-actions .ib {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;            /* menimpa button.sm / .tx-actions button { padding: .3rem .7rem } */
+  margin: 0;
+  line-height: 1;
+  font-size: 0;
+  text-decoration: none;
+}
+
+.tx-att-item .ib .ico,
+.tx-actions .ib .ico {
+  display: block;
+  width: 16px;
+  height: 16px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  flex: none;
+}
+
+/* Hover di <a> jangan memunculkan garis bawah */
+.tx-att-item a.ib:hover { text-decoration: none; }
