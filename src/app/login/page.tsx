@@ -26,8 +26,14 @@ async function signIn(fd: FormData) {
   redirect(data.url);
 }
 
-export default async function Login({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
-  const { next, error } = await searchParams;
+export default async function Login({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; out?: string }> }) {
+  const { next, error, out } = await searchParams;
+  // Sudah punya sesi (mis. login berhasil tapi mendarat di /login): langsung ke tujuan.
+  // Dilewati setelah logout (?out=1) dan saat ada pesan error, supaya tidak saling memantul.
+  if (!out && !error) {
+    const { data: { user } } = await (await supabaseServer()).auth.getUser();
+    if (user) redirect(safeNext(next));
+  }
   return (
     <div className="login-wrap">
       <form action={signIn} className="card login-card">

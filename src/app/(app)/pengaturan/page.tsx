@@ -11,7 +11,7 @@ async function rename(fd: FormData) {
   const { error } = await sb.from("families").update({ name: p.data }).eq("id", familyId);
   revalidatePath("/pengaturan"); back("/pengaturan", error ? pgMessage(error) : "Tersimpan.");
 }
-async function signOutAll() { "use server"; const { sb } = await getCtx(); await sb.auth.signOut({ scope: "global" }); redirect("/login"); }
+async function signOutAll() { "use server"; const { sb } = await getCtx(); await sb.auth.signOut({ scope: "global" }); redirect("/login?out=1"); }
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams; const { sb, familyId, role, ledger } = await getCtx();
   const { data: f } = await sb.from("families").select("name,currency,timezone").eq("id", familyId).single();
