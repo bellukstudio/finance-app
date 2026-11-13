@@ -19,13 +19,39 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!a) return new NextResponse("Not found", { status: 404 });
   const dl = req.nextUrl.searchParams.has("dl");
   try {
+    // Sumber file: URL bertanda tangan Cloudinary (nota baru) atau Supabase Storage (nota lama).
+    let src: string;
     if (isCloudinaryPath(a.storage_path)) {
-      const res = NextResponse.redirect(receiptUrl(a.storage_path, FORMAT[a.mime_type] ?? "jpg", dl));
-      res.headers.set("Cache-Control", "private, no-store"); return res;
+      src = receiptUrl(a.storage_path, FORMAT[a.mime_type] ?? "jpg", dl);
+    } else {
+      const { data } = await sb.storage.from("receipts").createSignedUrl(a.storage_path, 60, dl ? { download: true } : undefined);
+      if (!data) return new NextResponse("Error", { status: 500 });
+      src = data.signedUrl;
     }
-    const { data } = await sb.storage.from("receipts").createSignedUrl(a.storage_path, 60, dl ? { download: true } : undefined);
-    if (!data) return new NextResponse("Error", { status: 500 });
-    const res = NextResponse.redirect(data.signedUrl); res.headers.set("Cache-Control", "private, no-store"); return res;
+
+    // Pratinjau GAMBAR: ambil di server lalu alirkan inline dari origin sendiri. Redirect lintas-origin
+    // ke Cloudinary (endpoint download berantai + Content-Disposition) sering gagal dimuat oleh <img>
+    // (CSP, service worker, header attachment) sehingga yang tampil hanya ikon gambar rusak.
+    if (!dl && a.mime_type.startsWith("image/")) {
+      const up = await fetch(src, { cache: "no-store" });
+      if (!up.ok || !up.body) {
+        log("error", "attachments.preview", { status: up.status, id });
+        return new NextResponse("Gagal memuat file", { status: 502 });
+      }
+      const headers = new Headers({
+        "Content-Type": a.mime_type,
+        "Content-Disposition": "inline",
+        "Cache-Control": "private, no-store",
+      });
+      const len = up.headers.get("content-length");
+      if (len) headers.set("Content-Length", len);
+      return new NextResponse(up.body, { status: 200, headers });
+    }
+
+    // Unduhan & PDF: redirect ke URL bertanda tangan berumur pendek.
+    const res = NextResponse.redirect(src);
+    res.headers.set("Cache-Control", "private, no-store");
+    return res;
   } catch (err) { log("error", "attachments.get", { error: String(err) }); return new NextResponse("Error", { status: 500 }); }
 }
 // Hapus: metadata dulu (RLS: Owner/Admin), lalu file. File Supabase yatim dibersihkan job; file Cloudinary dihapus langsung.

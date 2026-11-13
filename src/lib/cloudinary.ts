@@ -36,9 +36,9 @@ export function uploadReceipt(bytes: Uint8Array, familyId: string, txId: string)
   });
 }
 
-/** URL unduhan bertanda tangan yang kedaluwarsa dalam 60 detik. */
+/** URL unduhan bertanda tangan yang kedaluwarsa dalam 60 detik. `attachment` hanya dikirim bila mengunduh (attachment=false tetap dianggap attachment oleh Cloudinary). */
 export const receiptUrl = (publicId: string, format: string, download: boolean) =>
-  cl().utils.private_download_url(publicId, format, { resource_type: "image", type: "authenticated", expires_at: Math.floor(Date.now() / 1000) + 60, attachment: download });
+  cl().utils.private_download_url(publicId, format, { resource_type: "image", type: "authenticated", expires_at: Math.floor(Date.now() / 1000) + 60, ...(download ? { attachment: true } : {}) });
 
 /** true bila file sudah terhapus (atau memang tidak ada). */
 export async function deleteReceipt(publicId: string): Promise<boolean> {

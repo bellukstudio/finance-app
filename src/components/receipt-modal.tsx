@@ -36,6 +36,8 @@ export function ReceiptModal({
   const isPdf = mimeType === "application/pdf";
   const [zoomed, setZoomed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   // Tutup dengan tombol Escape
   useEffect(() => {
@@ -132,17 +134,31 @@ export function ReceiptModal({
         <div className="receipt-body">
           {isImage ? (
             <div className={`receipt-img-canvas ${zoomed ? "is-zoomed" : ""}`}>
-              {loading && (
+              {failed && (
+                <div className="receipt-loading" role="alert" style={{ flexDirection: "column", textAlign: "center" }}>
+                  <span>Gambar nota gagal dimuat.</span>
+                  <button
+                    type="button"
+                    className="ghost sm"
+                    onClick={() => { setFailed(false); setLoading(true); setAttempt((n) => n + 1); }}
+                  >
+                    Coba lagi
+                  </button>
+                </div>
+              )}
+              {loading && !failed && (
                 <div className="receipt-loading">
                   <span className="receipt-spinner" /> Memuat gambar nota…
                 </div>
               )}
               <img
-                src={url}
+                key={attempt}
+                src={attempt ? `${url}${url.includes("?") ? "&" : "?"}r=${attempt}` : url}
                 alt={title || "Foto Nota Transaksi"}
                 className="receipt-img"
+                style={failed ? { display: "none" } : undefined}
                 onLoad={() => setLoading(false)}
-                onError={() => setLoading(false)}
+                onError={() => { setLoading(false); setFailed(true); }}
                 onClick={() => setZoomed((z) => !z)}
                 title="Klik gambar untuk memperbesar / memperkecil"
               />
