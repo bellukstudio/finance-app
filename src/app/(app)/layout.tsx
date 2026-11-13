@@ -6,7 +6,7 @@ import { todayJakarta } from "@/lib/period";
 import { switchLedger } from "./ledger-actions";
 
 const ROLE: Record<string, string> = { owner: "Owner", admin: "Admin", member: "Anggota", viewer: "Viewer" };
-async function signOut() { "use server"; const sb = await supabaseServer(); await sb.auth.signOut(); redirect("/login"); }
+async function signOut() { "use server"; const sb = await supabaseServer(); await sb.auth.signOut(); redirect("/login?out=1"); }
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const ctx = await getOptionalCtx();
   if (!ctx) {
