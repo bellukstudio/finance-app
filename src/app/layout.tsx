@@ -1,29 +1,27 @@
-import { redirect } from "next/navigation";
-import { supabaseServer } from "@/lib/supabase/server";
-import { getOptionalCtx } from "@/lib/context";
-import { AppNav } from "@/components/nav";
-import { todayJakarta } from "@/lib/period";
-import { switchLedger } from "./ledger-actions";
+import "./globals.css";
+import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
+import { Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
+const sans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font" });
+const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-mono" });
 
-const ROLE: Record<string, string> = { owner: "Owner", admin: "Admin", member: "Anggota", viewer: "Viewer" };
-async function signOut() { "use server"; const sb = await supabaseServer(); await sb.auth.signOut(); redirect("/login?out=1"); }
-export default async function Layout({ children }: { children: React.ReactNode }) {
-  const ctx = await getOptionalCtx();
-  if (!ctx) {
-    const { data: { user } } = await (await supabaseServer()).auth.getUser();
-    return <AppNav unread={0} signOut={signOut} wallets={[]} cats={[]} budgets={[]} ledger="family" ledgers={[]} user={{ name: user?.email?.split("@")[0] ?? "Akun", role: "Belum ada grup" }} switchLedger={switchLedger}>{children}</AppNav>;
-  }
-  const { sb, user, role, familyId: fid, ledger, ledgers, ledgerName } = ctx;
-  const today = todayJakarta(), from = new Date(Date.parse(today) - 62 * 86400000).toISOString().slice(0, 10);
-  const [{ count }, { data: ws }, { data: cs }, { data: bs }, { data: prof }] = await Promise.all([
-    sb.from("notifications").select("id", { count: "exact", head: true }).eq("family_id", fid).is("read_at", null),
-    sb.from("wallets").select("id,name").eq("family_id", fid).eq("is_active", true).is("deleted_at", null).order("name"),
-    sb.from("categories").select("id,name,type").eq("family_id", fid).eq("is_active", true).is("deleted_at", null).order("name"),
-    sb.from("budgets").select("id,name,scope,category_id,wallet_id,start_date,end_date").eq("family_id", fid).is("deleted_at", null).gte("end_date", from),
-    sb.from("profiles").select("full_name").eq("id", user.id).maybeSingle()
-  ]);
-  const cn = new Map((cs ?? []).map((c) => [c.id, c.name])), wn = new Map((ws ?? []).map((w) => [w.id, w.name]));
-  const budgets = (bs ?? []).map((b) => ({ id: b.id, start: b.start_date, end: b.end_date,
-    name: b.name || (b.category_id ? cn.get(b.category_id) : b.wallet_id ? wn.get(b.wallet_id) : null) || "Budget" }));
-  return <AppNav unread={count ?? 0} signOut={signOut} wallets={ws ?? []} cats={cs ?? []} budgets={budgets} ledger={ledger} ledgers={ledgers} user={{ name: prof?.full_name?.trim() || user.email?.split("@")[0] || "Akun", role: `${ROLE[role] ?? role} · ${ledgerName}` }} switchLedger={switchLedger}>{children}</AppNav>;
+export const metadata: Metadata = {
+  title: "Family Finance Manager",
+  manifest: "/manifest.json",
+  icons: { icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }, { url: "/icon-512.png", sizes: "512x512", type: "image/png" }], apple: "/apple-touch-icon.png" },
+  // iOS tidak baca manifest.json untuk mode standalone; meta ini yang dipakai Safari.
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Family Finance" },
+};
+// viewport-fit=cover + themeColor lewat Next Viewport API (bukan <meta> manual) supaya tidak dobel.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#060A12" };
+
+const themeInit = `try{var t=localStorage.getItem("theme")||"dark";document.documentElement.dataset.theme=t}catch(e){}`;
+export default async function Root({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;  // dari middleware (CSP berbasis nonce)
+  return (
+    <html lang="id" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head><script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeInit }} /></head>
+      <body>{children}</body>
+    </html>
+  );
 }
