@@ -18,10 +18,15 @@ export async function GET(req: NextRequest) {
     return toLogin("denied");
   }
   const code = req.nextUrl.searchParams.get("code");
+  const sb = await supabaseServer();
   if (code) {
-    const sb = await supabaseServer();
     const { error } = await sb.auth.exchangeCodeForSession(code);
     if (error) { log("warn", "auth.callback", { error: error.message }); return toLogin("auth"); }
+  } else {
+    // Tanpa ?code: hanya lanjut bila sudah punya sesi. Dulu langsung ke `next` lalu dipantulkan middleware
+    // kembali ke /login tanpa pesan apa pun.
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) { log("warn", "auth.callback", { error: "callback tanpa code & tanpa sesi" }); return toLogin("auth"); }
   }
   return NextResponse.redirect(new URL(next, req.nextUrl.origin));
 }
