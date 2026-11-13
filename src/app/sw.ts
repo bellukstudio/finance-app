@@ -18,17 +18,26 @@ const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
+  // FIX: navigation preload + halaman yang di-redirect middleware (/ -> /login?next=%2F) memicu
+  // "no-response" di Workbox/Serwist. Dimatikan; kita tidak membutuhkannya untuk app-shell ini.
+  navigationPreload: false,
   runtimeCaching: [
-    // Data & mutasi: API routes, callback auth, cron — selalu lewat network, jangan pernah
-    // dilayani dari cache (saldo/transaksi harus selalu yang terbaru, bukan data lama).
+    // Data, mutasi, dan alur login: selalu lewat network, jangan pernah dilayani/disimpan di cache.
+    // "/" dan "/login" ikut di sini karena keduanya hanya redirect/halaman auth: menyimpan respons
+    // redirect (opaqueredirect) atau halaman login lama di cache bisa membuat login macet.
     {
-      matcher: ({ url }: { url: URL }) => url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/"),
+      matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
+        sameOrigin && (
+          url.pathname === "/" ||
+          url.pathname === "/login" ||
+          url.pathname.startsWith("/api/") ||
+          url.pathname.startsWith("/auth/") ||
+          url.pathname.startsWith("/undangan")
+        ),
       handler: new NetworkOnly(),
     },
     // Sisanya (halaman app-router, aset statis, font) pakai strategi default Serwist
-    // (NetworkFirst untuk dokumen, StaleWhileRevalidate untuk aset) — cukup untuk app-shell
-    // offline tanpa membuat data keuangan terasa basi.
+    // (NetworkFirst untuk dokumen, StaleWhileRevalidate untuk aset).
     ...defaultCache,
   ],
 });
