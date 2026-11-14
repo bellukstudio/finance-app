@@ -54,6 +54,7 @@ const groupsFor = (ledger: Ledger): typeof GROUPS => ledger === "personal"
 function toggleTheme() {
   const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
   document.documentElement.dataset.theme = next;
+  document.cookie = `theme=${next};path=/;max-age=31536000;samesite=lax`;
   try { localStorage.setItem("theme", next); } catch {}
 }
 const ThemeIcons = () => <span className="ti2" aria-hidden="true"><Icon n="moon" className="ico t-moon" /><Icon n="sun" className="ico t-sun" /></span>;
