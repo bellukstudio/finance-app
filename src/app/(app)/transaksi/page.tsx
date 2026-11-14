@@ -1,4 +1,6 @@
 import { revalidatePath } from "next/cache";
+import Form from "next/form";
+import Link from "next/link";
 import { getCtx, canWrite, canManage, back } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { rupiah } from "@/lib/format";
@@ -57,10 +59,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
       <div className="toolbar"><a className="btn ghost" href="/api/export?format=csv">CSV</a><a className="btn ghost" href="/api/export?format=xlsx">Excel</a><a className="btn ghost" href="/api/export?format=pdf">PDF</a>
         {canWrite(role) && <button type="button" data-open-tx><Icon n="plus" /> Transaksi</button>}</div></div>
     {sp.e && <p role="alert">{sp.e}</p>}
-    <form method="get" className="filters"><input name="q" placeholder="Cari deskripsi" defaultValue={sp.q} />
+    <Form action="/transaksi" className="filters"><input name="q" placeholder="Cari deskripsi" defaultValue={sp.q} />
       <select name="type" defaultValue={sp.type}><option value="">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select>
       <select name="wallet" defaultValue={sp.wallet}><option value="">Semua dompet</option>{wallets?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
-      <input type="date" name="from" defaultValue={sp.from} aria-label="Dari tanggal" /><input type="date" name="to" defaultValue={sp.to} aria-label="Sampai tanggal" /><button className="ghost">Filter</button></form>
+      <input type="date" name="from" defaultValue={sp.from} aria-label="Dari tanggal" /><input type="date" name="to" defaultValue={sp.to} aria-label="Sampai tanggal" /><button className="ghost">Filter</button></Form>
     {!txs?.length ? <p className="muted">Tidak ada transaksi.</p> : [...groups].map(([date, list]) => {
       const y = Number(date.slice(0, 4)), m = Number(date.slice(5, 7)), d = Number(date.slice(8, 10)), dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
       const sum = (t: string) => list.filter(x => x.type === t).reduce((a, x) => a + Number(x.amount), 0), e = sum("expense"), i = sum("income"), tr = sum("transfer");
@@ -84,6 +86,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
       </section>;
     })}
     <div className="toolbar" style={{ justifyContent: "space-between" }}><small className="muted">Halaman {pg} dari {pages}</small>
-      <span className="toolbar">{pg > 1 && <a className="btn ghost" href={link(pg - 1)}>‹ Sebelumnya</a>}{pg < pages && <a className="btn ghost" href={link(pg + 1)}>Berikutnya ›</a>}</span></div>
+      <span className="toolbar">{pg > 1 && <Link className="btn ghost" href={link(pg - 1)}>‹ Sebelumnya</Link>}{pg < pages && <Link className="btn ghost" href={link(pg + 1)}>Berikutnya ›</Link>}</span></div>
   </main>);
 }

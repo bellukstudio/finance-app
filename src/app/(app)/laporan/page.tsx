@@ -47,6 +47,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
     body = <DataTable label="Performa budget" rows={rows} empty="Tidak ada budget pada periode ini." defaultSort={{ key: "name", dir: "asc" }}
       columns={[{ key: "name", header: "Budget", sortable: true }, { key: "total", header: "Anggaran", align: "right", sortable: true }, { key: "used", header: "Terpakai", align: "right", sortable: true }, { key: "st", header: "Status", sortable: true }]} />;
   }
-  return (<main><h1>{ledger === "personal" ? "Laporan Pribadi" : "Laporan"}</h1><PeriodForm current={p.key} from={p.from} to={p.to} extra={<select name="r" defaultValue={r}>{Object.entries(REPORTS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>} />
+  return (<main><h1>{ledger === "personal" ? "Laporan Pribadi" : "Laporan"}</h1><PeriodForm action="/laporan" current={p.key} from={p.from} to={p.to} extra={<select name="r" defaultValue={r}>{Object.entries(REPORTS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>} />
     <p><small>Pembayaran utang tidak dihitung ke laporan kategori agar tidak ganda; transfer tidak dihitung sebagai pemasukan/pengeluaran.</small></p><div className="card">{body}</div></main>);
 }
