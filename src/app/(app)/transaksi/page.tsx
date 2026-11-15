@@ -7,6 +7,7 @@ import { rupiah } from "@/lib/format";
 import { Icon } from "@/components/icons";
 import { TxRow } from "@/components/tx-row";
 import { TxAttachments } from "@/components/tx-attachments";
+import { TxEdit } from "@/components/tx-edit";
 
 const PAGE = 30;
 const isUuid = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -35,7 +36,7 @@ const SHORT = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "O
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const { sb, role, familyId } = await getCtx();
+  const { sb, user, role, familyId } = await getCtx();
   const pg = Math.max(1, Number(sp.page) || 1);
   let q = sb.from("transactions").select("id,date,type,amount,description,note,wallet_id,to_wallet_id,category_id,budget_id,created_by", { count: "exact" }).eq("family_id", familyId).is("deleted_at", null)
     .order("date", { ascending: false }).order("created_at", { ascending: false }).range((pg - 1) * PAGE, pg * PAGE - 1);
@@ -44,9 +45,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   if (sp.type) q = q.eq("type", sp.type);
   if (sp.from) q = q.gte("date", sp.from);
   if (sp.to) q = q.lte("date", sp.to);
-  const [{ data: txs, count }, { data: wallets }, { data: cats }, { data: bs }] = await Promise.all([q,
-    sb.from("wallets").select("id,name").eq("family_id", familyId).is("deleted_at", null), sb.from("categories").select("id,name").eq("family_id", familyId).is("deleted_at", null),
-    sb.from("budgets").select("id,name,category_id").eq("family_id", familyId).is("deleted_at", null)]);
+  const [{ data: txs, count }, { data: wallets }, { data: cats }, { data: bs }, { data: bw }, { data: bc }] = await Promise.all([q,
+    sb.from("wallets").select("id,name,is_active").eq("family_id", familyId).is("deleted_at", null), sb.from("categories").select("id,name,type,is_active").eq("family_id", familyId).is("deleted_at", null),
+    sb.from("budgets").select("id,name,category_id,scope,wallet_id,start_date,end_date").eq("family_id", familyId).is("deleted_at", null),
+    sb.from("budget_wallets").select("budget_id,wallet_id").eq("family_id", familyId), sb.from("budget_categories").select("budget_id,category_id").eq("family_id", familyId)]);
+  const grp = (rows: Record<string, string>[] | null, key: string) => { const m = new Map<string, string[]>(); (rows ?? []).forEach((r) => { if (r.budget_id && r[key]) m.set(r.budget_id, [...(m.get(r.budget_id) ?? []), r[key]]); }); return m; };
+  const bwm = grp(bw, "wallet_id"), bcm = grp(bc, "category_id");
+  const editBudgets = (bs ?? []).map((b) => ({ id: b.id, name: b.name || (b.category_id && cats?.find((c) => c.id === b.category_id)?.name) || "Budget", start: b.start_date, end: b.end_date,
+    wallet_ids: bwm.get(b.id) ?? (b.scope === "wallet" && b.wallet_id ? [b.wallet_id] : []), category_ids: bcm.get(b.id) ?? (b.scope === "category" && b.category_id ? [b.category_id] : []) }));
+  const editWallets = (wallets ?? []).map((w) => ({ id: w.id, name: w.name, active: w.is_active !== false }));
+  const editCats = (cats ?? []).map((c) => ({ id: c.id, name: c.name, type: c.type, active: c.is_active !== false }));
   const cn = new Map(cats?.map(c => [c.id, c.name]));
   const maps = { wallets: new Map(wallets?.map(w => [w.id, w.name])), cats: cn, budgets: new Map((bs ?? []).map(b => [b.id, b.name || (b.category_id && cn.get(b.category_id)) || "Budget"])) };
   const { data: atts } = txs?.length ? await sb.from("attachments").select("id,transaction_id,mime_type,size_bytes").in("transaction_id", txs.map(t => t.id)).is("deleted_at", null) : { data: [] as { id: string; transaction_id: string; mime_type: string; size_bytes?: number }[] };
@@ -71,6 +79,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <div className="tot">{i > 0 && <span className="inc">+{rupiah(i)}</span>}{e > 0 && <span className="exp">−{rupiah(e)}</span>}{tr > 0 && <span className="trf">{rupiah(tr)}</span>}</div></div>
         {list.map(t => <TxRow key={t.id} t={t} maps={maps}>
           <div className="tx-actions">
+            {canWrite(role) && (canManage(role) || t.created_by === user.id) && <TxEdit
+              tx={{ id: t.id, type: t.type, date: t.date, amount: t.amount, wallet_id: t.wallet_id, to_wallet_id: t.to_wallet_id, category_id: t.category_id, budget_id: t.budget_id ?? null, text: t.description || t.note || "" }}
+              wallets={editWallets.filter((w) => w.active || w.id === t.wallet_id || w.id === t.to_wallet_id)}
+              cats={editCats.filter((c) => c.active || c.id === t.category_id)}
+              budgets={editBudgets} />}
             {canWrite(role) && t.type !== "transfer" && <form action={dup}><input type="hidden" name="id" value={t.id} /><button className="ghost sm">Duplikasi</button></form>}
             {canManage(role) && <form action={del}><input type="hidden" name="id" value={t.id} /><button className="danger sm" data-confirm="Saldo wallet dan pemakaian budget akan menyesuaikan." data-confirm-title="Hapus transaksi ini?" data-confirm-label="Hapus">Hapus</button></form>}
             <TxAttachments

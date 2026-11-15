@@ -47,3 +47,41 @@ export async function saveTx(input: TxInput): Promise<TxResult> {
   revalidatePath("/", "layout");
   return { ok: true, id };
 }
+
+const Upd = z.object({ id: z.string().uuid(), date: z.string().date(), amount: z.coerce.number().positive().max(9_999_999_999_999), wallet_id: z.string().uuid(),
+  to_wallet_id: z.string().uuid().nullable().optional(), category_id: z.string().uuid().nullable().optional(), note: z.string().max(200).optional(), budget_id: z.string().uuid().nullable().optional() });
+export type UpdateTxInput = z.input<typeof Upd>;
+
+/** Ubah transaksi yang sudah ada. Jenis transaksi tidak bisa diganti. Aturan budget sama dengan saveTx: wallet & kategori harus cocok. */
+export async function updateTx(input: UpdateTxInput): Promise<Result> {
+  const { sb, user, familyId, role } = await getCtx();
+  if (!canWrite(role)) return { ok: false, error: "Viewer tidak dapat mengubah transaksi." };
+  const p = Upd.safeParse(input);
+  if (!p.success) return { ok: false, error: "Input tidak valid." };
+  const v = p.data;
+  const { data: cur } = await sb.from("transactions").select("id,type,created_by").eq("id", v.id).eq("family_id", familyId).is("deleted_at", null).maybeSingle();
+  if (!cur) return { ok: false, error: "Transaksi tidak ditemukan." };
+  if (!(role === "owner" || role === "admin" || cur.created_by === user.id)) return { ok: false, error: "Anda hanya dapat mengubah transaksi yang Anda buat." };
+  if (cur.type === "transfer") {
+    if (!v.to_wallet_id) return { ok: false, error: "Pilih wallet tujuan." };
+    if (v.to_wallet_id === v.wallet_id) return { ok: false, error: "Wallet asal dan tujuan harus berbeda." };
+  } else if (!v.category_id) return { ok: false, error: "Pilih kategori." };
+  if (cur.type !== "income" && v.budget_id) {
+    const { data: b } = await sb.from("budgets").select("id").eq("id", v.budget_id).eq("family_id", familyId).is("deleted_at", null).maybeSingle();
+    if (!b) return { ok: false, error: "Budget tidak ditemukan." };
+    if (cur.type === "expense") {
+      const [{ data: bw }, { data: bc }] = await Promise.all([
+        sb.from("budget_wallets").select("wallet_id").eq("budget_id", v.budget_id), sb.from("budget_categories").select("category_id").eq("budget_id", v.budget_id)]);
+      if ((bw?.length && !bw.some((r) => r.wallet_id === v.wallet_id)) || (bc?.length && !bc.some((r) => r.category_id === v.category_id)))
+        return { ok: false, error: "Wallet atau kategori tidak sesuai dengan budget yang dipilih." };
+    }
+  }
+  const text = v.note?.trim() || null;
+  const patch = cur.type === "transfer"
+    ? { date: v.date, amount: v.amount, wallet_id: v.wallet_id, to_wallet_id: v.to_wallet_id, category_id: null, note: text, description: null, budget_id: v.budget_id ?? null }
+    : { date: v.date, amount: v.amount, wallet_id: v.wallet_id, to_wallet_id: null, category_id: v.category_id, description: text, note: null, budget_id: cur.type === "expense" ? v.budget_id ?? null : null };
+  const { error } = await sb.from("transactions").update({ ...patch, updated_by: user.id }).eq("id", v.id).eq("family_id", familyId);
+  if (error) return { ok: false, error: pgMessage(error) ?? "Gagal menyimpan perubahan." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
