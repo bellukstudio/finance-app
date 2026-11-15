@@ -7,7 +7,7 @@ import { compressReceiptFile, formatBytes, type CompressionResult } from "@/lib/
 
 export type Opt = { id: string; name: string };
 export type CatOpt = Opt & { type: string };
-export type BudgetOpt = Opt & { start: string; end: string };
+export type BudgetOpt = Opt & { start: string; end: string; wallet_ids: string[]; category_ids: string[] };
 type Kind = "income" | "expense" | "transfer";
 const TABS: { k: Kind; label: string; icon: "down" | "up" | "swap"; c: string }[] = [
   { k: "income", label: "Pemasukan", icon: "down", c: "var(--income)" },
@@ -49,7 +49,9 @@ export function TxModal({ wallets, cats, budgets, initialAmount, onClose }: { wa
     } finally { setCompressing(false); }
   }
   const list = useMemo(() => cats.filter((c) => c.type === kind), [cats, kind]);
-  const bl = useMemo(() => budgets.filter((b) => date >= b.start && date <= b.end), [budgets, date]);
+  // Budget hanya muncul bila tanggal, wallet (bank) DAN kategori cocok. Daftar kosong = semua.
+  const bl = useMemo(() => budgets.filter((b) => date >= b.start && date <= b.end
+    && (kind !== "expense" || ((!b.wallet_ids.length || b.wallet_ids.includes(wallet)) && (!b.category_ids.length || b.category_ids.includes(cat))))), [budgets, date, kind, wallet, cat]);
   useEffect(() => { setCat(list[0]?.id ?? ""); }, [list]);
   useEffect(() => { if (budget && !bl.some((b) => b.id === budget)) setBudget(""); }, [bl, budget]);
   useEffect(() => { const h = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [onClose]);
@@ -96,8 +98,8 @@ export function TxModal({ wallets, cats, budgets, initialAmount, onClose }: { wa
               <option value="">{kind === "expense" ? "Otomatis sesuai wallet & kategori" : "Tidak dialokasikan"}</option>
               {bl.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
-            <small className="muted">{kind === "expense" ? "Jika dipilih, hanya budget ini yang terpotong, tidak bentrok dengan budget lain." : "Transfer menambah total budget yang dipilih."}</small>
-            {!bl.length && <small className="muted">Belum ada budget pada tanggal ini.</small>}
+            <small className="muted">{kind === "expense" ? "Hanya budget yang wallet & kategorinya cocok yang tampil." : "Transfer menambah total budget yang dipilih."}</small>
+            {!bl.length && <small className="muted">{kind === "expense" ? "Tidak ada budget yang cocok dengan tanggal, wallet & kategori ini." : "Belum ada budget pada tanggal ini."}</small>}
           </div>}
           <label className="fld"><span>Catatan</span><input value={note} maxLength={200} placeholder="Opsional…" onChange={(e) => setNote(e.target.value)} /></label>
           <div className="fld"><span>Nota (opsional)</span>

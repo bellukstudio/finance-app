@@ -24,7 +24,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ h
       ...(b.scope === "multi" ? {} : { wallet_ids: b.scope === "wallet" && b.wallet_id ? [b.wallet_id] : wm.get(b.id) ?? [], category_ids: b.scope === "category" && b.category_id ? [b.category_id] : cm.get(b.id) ?? [] }) };
   });
   // Transaksi yang terhubung ke budget — aturannya sama dengan view budget_usage:
-  //  • pengeluaran ber-budget_id  → hanya budget itu
+  //  • pengeluaran ber-budget_id  → hanya budget itu, dan wallet + kategori harus tetap cocok
   //  • pengeluaran tanpa budget_id → budget yang wallet, kategori & periodenya cocok (daftar kosong = semua)
   //  • transfer ber-budget_id      → menambah budget (top-up)
   let txs: BudgetTx[] = [];
@@ -37,8 +37,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ h
       .order("date", { ascending: false }).order("created_at", { ascending: false }).limit(2000);
     txs = (data ?? []) as BudgetTx[];
     const hit = (b: BudgetView, t: BudgetTx) => t.type === "transfer" ? t.budget_id === b.id
-      : t.type === "expense" && (t.budget_id === b.id || (!t.budget_id && t.date >= b.start && t.date <= b.end
-        && (!b.wallet_ids.length || b.wallet_ids.includes(t.wallet_id)) && (!b.category_ids.length || (!!t.category_id && b.category_ids.includes(t.category_id)))));
+      : t.type === "expense" && (t.budget_id === b.id || (!t.budget_id && t.date >= b.start && t.date <= b.end))
+        && (!b.wallet_ids.length || b.wallet_ids.includes(t.wallet_id)) && (!b.category_ids.length || (!!t.category_id && b.category_ids.includes(t.category_id)));
     for (const b of list) b.tx_ids = txs.filter((t) => hit(b, t)).map((t) => t.id);
   }
   return <BudgetManager budgets={list} transactions={txs} walletNames={allWs ?? []} catNames={allCats ?? []} wallets={ws ?? []} cats={cats ?? []} canEdit={canManage(role)} history={!!history} today={today} />;

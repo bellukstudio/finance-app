@@ -25,6 +25,12 @@ export async function saveTx(input: TxInput): Promise<TxResult> {
   if (v.budget_id) {
     const { data: b } = await sb.from("budgets").select("id").eq("id", v.budget_id).eq("family_id", familyId).is("deleted_at", null).maybeSingle();
     if (!b) return { ok: false, error: "Budget tidak ditemukan." };
+    if (v.type === "expense") {
+      const [{ data: bw }, { data: bc }] = await Promise.all([
+        sb.from("budget_wallets").select("wallet_id").eq("budget_id", v.budget_id), sb.from("budget_categories").select("category_id").eq("budget_id", v.budget_id)]);
+      if ((bw?.length && !bw.some((r) => r.wallet_id === v.wallet_id)) || (bc?.length && !bc.some((r) => r.category_id === v.category_id)))
+        return { ok: false, error: "Wallet atau kategori tidak sesuai dengan budget yang dipilih." };
+    }
   }
   let error: { code?: string; message?: string } | null = null, id: string | null = null;
   if (v.type === "transfer") {
