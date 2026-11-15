@@ -15,15 +15,21 @@ export default async function Layout({ children }: { children: React.ReactNode }
   }
   const { sb, user, role, familyId: fid, ledger, ledgers, ledgerName } = ctx;
   const today = todayJakarta(), from = new Date(Date.parse(today) - 62 * 86400000).toISOString().slice(0, 10);
-  const [{ count }, { data: ws }, { data: cs }, { data: bs }, { data: prof }] = await Promise.all([
+  const [{ count }, { data: ws }, { data: cs }, { data: bs }, { data: prof }, { data: bw }, { data: bc }] = await Promise.all([
     sb.from("notifications").select("id", { count: "exact", head: true }).eq("family_id", fid).is("read_at", null),
     sb.from("wallets").select("id,name").eq("family_id", fid).eq("is_active", true).is("deleted_at", null).order("name"),
     sb.from("categories").select("id,name,type").eq("family_id", fid).eq("is_active", true).is("deleted_at", null).order("name"),
     sb.from("budgets").select("id,name,scope,category_id,wallet_id,start_date,end_date").eq("family_id", fid).is("deleted_at", null).gte("end_date", from),
-    sb.from("profiles").select("full_name").eq("id", user.id).maybeSingle()
+    sb.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+    sb.from("budget_wallets").select("budget_id,wallet_id").eq("family_id", fid),
+    sb.from("budget_categories").select("budget_id,category_id").eq("family_id", fid)
   ]);
+  const grp = (rows: Record<string, string>[] | null, key: string) => { const m = new Map<string, string[]>(); (rows ?? []).forEach((r) => { if (r.budget_id && r[key]) m.set(r.budget_id, [...(m.get(r.budget_id) ?? []), r[key]]); }); return m; };
+  const bwm = grp(bw, "wallet_id"), bcm = grp(bc, "category_id");
   const cn = new Map((cs ?? []).map((c) => [c.id, c.name])), wn = new Map((ws ?? []).map((w) => [w.id, w.name]));
   const budgets = (bs ?? []).map((b) => ({ id: b.id, start: b.start_date, end: b.end_date,
+    wallet_ids: bwm.get(b.id) ?? (b.scope === "wallet" && b.wallet_id ? [b.wallet_id] : []),
+    category_ids: bcm.get(b.id) ?? (b.scope === "category" && b.category_id ? [b.category_id] : []),
     name: b.name || (b.category_id ? cn.get(b.category_id) : b.wallet_id ? wn.get(b.wallet_id) : null) || "Budget" }));
   return <AppNav unread={count ?? 0} signOut={signOut} wallets={ws ?? []} cats={cs ?? []} budgets={budgets} ledger={ledger} ledgers={ledgers} user={{ name: prof?.full_name?.trim() || user.email?.split("@")[0] || "Akun", role: `${ROLE[role] ?? role} · ${ledgerName}` }} switchLedger={switchLedger}>{children}</AppNav>;
 }
