@@ -53,8 +53,27 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     <div className="head"><div><h1>Utang &amp; Piutang</h1><small>Catat pokok, jatuh tempo, dan pembayaran</small></div></div>
     {e && <p role="alert">{e}</p>}
     <p>Pembayaran membuat transaksi dompet otomatis dalam satu proses (tidak dihitung dua kali) dan dikecualikan dari laporan kategori.</p>
-    {canWrite(role) && <form action={create}><select name="direction"><option value="payable">Utang (saya berutang)</option><option value="receivable">Piutang (orang berutang ke saya)</option></select>
-      <input name="counterparty" placeholder="Pihak terkait" required /><MoneyInput name="principal" placeholder="Pokok (Rp)" required /><input name="due_date" type="date" /><input name="notes" placeholder="Catatan" /><button>Tambah</button></form>}
+    {canWrite(role) && <section className="card" style={{ marginBottom: 20 }}>
+      <div className="between"><div><h2 style={{ margin: 0 }}>Catat utang / piutang</h2><small className="muted">Lengkapi pihak terkait, nominal, jatuh tempo, dan keterangan.</small></div></div>
+      <form action={create} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12, marginTop: 16 }}>
+        <label style={{ display: "grid", gap: 6 }}>Jenis transaksi
+          <select name="direction" defaultValue="receivable"><option value="receivable">Piutang — orang berutang kepada saya</option><option value="payable">Utang — saya berutang kepada orang lain</option></select>
+        </label>
+        <label style={{ display: "grid", gap: 6 }}>Nama pihak terkait
+          <input name="counterparty" placeholder="Nama orang / perusahaan" maxLength={80} required />
+        </label>
+        <label style={{ display: "grid", gap: 6 }}>Nominal pokok (Rp)
+          <MoneyInput name="principal" placeholder="0" required />
+        </label>
+        <label style={{ display: "grid", gap: 6 }}>Tanggal jatuh tempo
+          <input name="due_date" type="date" />
+        </label>
+        <label style={{ display: "grid", gap: 6, gridColumn: "1 / -1" }}>Catatan / keterangan
+          <textarea name="notes" rows={3} maxLength={300} placeholder="Tujuan pinjaman, kesepakatan, atau nomor referensi" />
+        </label>
+        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}><button type="submit">Simpan data</button></div>
+      </form>
+    </section>}
     {!ds?.length ? <p className="muted">Belum ada data.</p> : <div className="cards">{ds.map(d => { const mine = ps?.filter(p => p.debt_id === d.id) ?? []; const pr = Number(d.principal); const rem = remaining(pr, mine.map(p => Number(p.amount))); const st = debtStatus(rem, d.due_date, today);
       const cc = cats?.filter(c => c.type === (d.direction === "payable" ? "expense" : "income")) ?? []; const paid = pr > 0 ? Math.min(100, ((pr - rem) / pr) * 100) : 0;
       return <article key={d.id} className="card"><div className="between"><b>{d.counterparty}</b><span className="pill">{DEBT_LABEL[st]}</span></div>
