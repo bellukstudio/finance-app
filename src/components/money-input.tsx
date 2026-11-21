@@ -33,7 +33,7 @@ export function MoneyInput({ name, defaultValue = "", placeholder = "0", require
         maxLength={maxLength + Math.ceil(maxLength / 3) - 1}
         className={className}
         aria-label={ariaLabel ?? name}
-        onChange={(event) => setRaw(event.target.value.replace(/\D/g, "").slice(0, maxLength))}
+        onChange={(event) => setRaw(event.target.value.replace(/\D/g, "").slice(0, maxLength))}\n        onBlur={() => { if (raw && Number(raw) < min) setRaw(String(min)); }}
       />
     </>
   );
