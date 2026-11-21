@@ -6,6 +6,7 @@ import { pgMessage } from "@/lib/errors";
 import { rateLimit } from "@/lib/rate-limit";
 import { rupiah, tanggal } from "@/lib/format";
 import { todayJakarta } from "@/lib/period";
+import { MoneyInput } from "@/components/money-input";
 import { DataTable, type DTRow } from "@/components/data-table";
 
 const FREQ: Record<string, string> = { daily: "Harian", weekly: "Mingguan", monthly: "Bulanan", yearly: "Tahunan" };
@@ -53,7 +54,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     {canWrite(role) && <form action={create}><select name="type"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select>
       <select name="wallet_id">{ws?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
       <select name="category_id">{cats?.map(c => <option key={c.id} value={c.id}>{c.name} ({c.type})</option>)}</select>
-      <input name="amount" type="number" step="0.01" placeholder="Nominal" required /><input name="description" placeholder="Deskripsi" />
+      <MoneyInput name="amount" placeholder="Nominal (Rp)" required /><input name="description" placeholder="Deskripsi" />
       <select name="frequency">{Object.entries(FREQ).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select><input name="interval_n" type="number" min={1} defaultValue={1} title="Setiap n periode" />
       <input name="start_date" type="date" defaultValue={todayJakarta()} required /><input name="end_date" type="date" title="Berakhir (opsional)" /><button>Tambah</button></form>}
     {canManage(role) && <form action={runNow}><button>Jalankan sekarang</button></form>}
