@@ -15,7 +15,7 @@ type MoneyInputProps = {
 
 /** Displays Indonesian thousands separators while submitting a plain numeric value. */
 export function MoneyInput({ name, defaultValue = "", placeholder = "0", required, min = 0, maxLength = 15, className, ariaLabel }: MoneyInputProps) {
-  const initial = String(defaultValue ?? "").replace(/\D/g, "");
+  const initial = defaultValue === "" ? "" : String(Math.max(0, Math.round(Number(defaultValue) || 0)));
   const [raw, setRaw] = useState(initial);
   const shown = useMemo(() => raw ? new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(Number(raw)) : "", [raw]);
 
