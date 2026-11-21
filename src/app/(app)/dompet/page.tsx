@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { getCtx, canManage, back } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { rupiah } from "@/lib/format";
+import { MoneyInput } from "@/components/money-input";
 
 const W = z.object({ name: z.string().trim().min(1).max(60), kind: z.enum(["cash","bank","ewallet","savings","investment","credit_card","other"]),
   initial_balance: z.coerce.number().default(0), color: z.string().max(20).optional(), description: z.string().max(200).optional() });
@@ -43,7 +44,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     {e && <p role="alert">{e}</p>}
     {canManage(role) && <form action={create}><input name="name" placeholder="Nama dompet" required />
       <select name="kind">{Object.entries(KIND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-      <input name="initial_balance" type="number" step="0.01" placeholder="Saldo awal" defaultValue={0} /><input name="description" placeholder="Deskripsi" /><button>Tambah</button></form>}
+      <MoneyInput name="initial_balance" placeholder="Saldo awal (Rp)" defaultValue={0} /><input name="description" placeholder="Deskripsi" /><button>Tambah</button></form>}
     {!ws?.length ? <p className="muted">Belum ada dompet.</p> : <div className="cards">{ws.map(w => <article key={w.id} className="card" style={w.is_active ? undefined : { opacity: 0.6 }}>
       <div className="between"><b>{w.name}</b><span className="pill">{KIND[w.kind]}{w.is_active ? "" : " · nonaktif"}</span></div>
       <div className="big2">{rupiah(b.get(w.id) ?? 0)}</div>

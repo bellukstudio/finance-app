@@ -5,6 +5,7 @@ import { pgMessage } from "@/lib/errors";
 import { rupiah, tanggal } from "@/lib/format";
 import { SubmitButton } from "@/components/submit-button";
 import { DataTable, type DTRow } from "@/components/data-table";
+import { MoneyInput } from "@/components/money-input";
 
 const T = z.object({ src: z.string().uuid(), dst: z.string().uuid(), amt: z.coerce.number().positive(), d: z.string().date(),
   fee: z.coerce.number().min(0).default(0), fee_cat: z.string().uuid().optional().or(z.literal("")), nt: z.string().max(200).optional(), bid: z.string().uuid().optional().or(z.literal("")), idem: z.string().min(8) })
@@ -48,12 +49,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     {canWrite(role) ? <form action={submit} className="card stack xfer"><input type="hidden" name="idem" value={crypto.randomUUID()} />
       <div className="two"><label className="fld"><span>Wallet asal</span><select name="src">{ws.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
         <label className="fld"><span>Wallet tujuan</span><select name="dst" defaultValue={ws[1]?.id}>{ws.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label></div>
-      <div className="two"><label className="fld"><span>Nominal (Rp)</span><input name="amt" type="number" step="0.01" min="0" inputMode="decimal" placeholder="0" required /></label>
+      <div className="two"><label className="fld"><span>Nominal (Rp)</span><MoneyInput name="amt" placeholder="0" required /></label>
         <label className="fld"><span>Tanggal</span><input name="d" type="date" defaultValue={today} required /></label></div>
       <div className="alloc"><label className="lbl" htmlFor="xf-bid">Tambah ke budget (opsional)</label>
         <select id="xf-bid" name="bid" defaultValue=""><option value="">Tidak dialokasikan</option>{bs.map(b => <option key={b.id} value={b.id}>{b.name || "Budget"} ({b.start_date.slice(0, 7)})</option>)}</select>
         <small className="muted">Transfer menambah total budget yang dipilih.</small></div>
-      <div className="two"><label className="fld"><span>Biaya transfer (opsional)</span><input name="fee" type="number" step="0.01" min="0" inputMode="decimal" placeholder="0" defaultValue={0} /></label>
+      <div className="two"><label className="fld"><span>Biaya transfer (opsional)</span><MoneyInput name="fee" placeholder="0" defaultValue={0} /></label>
         <label className="fld"><span>Kategori biaya</span><select name="fee_cat"><option value="">Pilih kategori</option>{cats?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label></div>
       <label className="fld"><span>Catatan</span><input name="nt" placeholder="Opsional…" maxLength={200} /></label>
       <SubmitButton className="save" pending="Memproses…">Transfer</SubmitButton></form> : <p>Anda hanya dapat melihat.</p>}

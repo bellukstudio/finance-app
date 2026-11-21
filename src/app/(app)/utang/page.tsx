@@ -5,6 +5,7 @@ import { pgMessage } from "@/lib/errors";
 import { rupiah, tanggal } from "@/lib/format";
 import { todayJakarta } from "@/lib/period";
 import { DEBT_LABEL, debtStatus, remaining } from "@/lib/finance";
+import { MoneyInput } from "@/components/money-input";
 
 const D = z.object({ direction: z.enum(["payable","receivable"]), counterparty: z.string().trim().min(1).max(80), principal: z.coerce.number().positive(), due_date: z.string().date().optional().or(z.literal("")), notes: z.string().max(300).optional() });
 async function create(fd: FormData) {
@@ -52,16 +53,36 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     <div className="head"><div><h1>Utang &amp; Piutang</h1><small>Catat pokok, jatuh tempo, dan pembayaran</small></div></div>
     {e && <p role="alert">{e}</p>}
     <p>Pembayaran membuat transaksi dompet otomatis dalam satu proses (tidak dihitung dua kali) dan dikecualikan dari laporan kategori.</p>
-    {canWrite(role) && <form action={create}><select name="direction"><option value="payable">Utang (saya berutang)</option><option value="receivable">Piutang (orang berutang ke saya)</option></select>
-      <input name="counterparty" placeholder="Pihak terkait" required /><input name="principal" type="number" step="0.01" placeholder="Pokok" required /><input name="due_date" type="date" /><input name="notes" placeholder="Catatan" /><button>Tambah</button></form>}
+    {canWrite(role) && <section className="card" style={{ marginBottom: 20 }}>
+      <div className="between"><div><h2 style={{ margin: 0 }}>Catat utang / piutang</h2><small className="muted">Lengkapi pihak terkait, nominal, jatuh tempo, dan keterangan.</small></div></div>
+      <form action={create} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12, marginTop: 16 }}>
+        <label style={{ display: "grid", gap: 6 }}>Jenis transaksi
+          <select name="direction" defaultValue="receivable"><option value="receivable">Piutang — orang berutang kepada saya</option><option value="payable">Utang — saya berutang kepada orang lain</option></select>
+        </label>
+        <label style={{ display: "grid", gap: 6 }}>Nama pihak terkait
+          <input name="counterparty" placeholder="Nama orang / perusahaan" maxLength={80} required />
+        </label>
+        <label style={{ display: "grid", gap: 6 }}>Nominal pokok (Rp)
+          <MoneyInput name="principal" placeholder="0" required />
+        </label>
+        <label style={{ display: "grid", gap: 6 }}>Tanggal jatuh tempo
+          <input name="due_date" type="date" />
+        </label>
+        <label style={{ display: "grid", gap: 6, gridColumn: "1 / -1" }}>Catatan / keterangan
+          <textarea name="notes" rows={3} maxLength={300} placeholder="Tujuan pinjaman, kesepakatan, atau nomor referensi" />
+        </label>
+        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}><button type="submit">Simpan data</button></div>
+      </form>
+    </section>}
     {!ds?.length ? <p className="muted">Belum ada data.</p> : <div className="cards">{ds.map(d => { const mine = ps?.filter(p => p.debt_id === d.id) ?? []; const pr = Number(d.principal); const rem = remaining(pr, mine.map(p => Number(p.amount))); const st = debtStatus(rem, d.due_date, today);
       const cc = cats?.filter(c => c.type === (d.direction === "payable" ? "expense" : "income")) ?? []; const paid = pr > 0 ? Math.min(100, ((pr - rem) / pr) * 100) : 0;
       return <article key={d.id} className="card"><div className="between"><b>{d.counterparty}</b><span className="pill">{DEBT_LABEL[st]}</span></div>
-        <small>{d.direction === "payable" ? "Utang saya" : "Piutang saya"} · jatuh tempo {d.due_date ? tanggal(d.due_date) : "Belum ditentukan"}</small>\n        {d.notes && <p className="muted" style={{ margin: "8px 0" }}>{d.notes}</p>}
+        <small>{d.direction === "payable" ? "Utang saya" : "Piutang saya"} · jatuh tempo {d.due_date ? tanggal(d.due_date) : "Belum ditentukan"}</small>
+        {d.notes && <p className="muted" style={{ margin: "8px 0" }}>{d.notes}</p>}
         <div className="big2">{rupiah(rem)}</div>
         <div className="bar"><i style={{ width: `${paid}%` }} /></div><small>Sisa dari pokok {rupiah(pr)}</small>
         {rem > 0 && canWrite(role) && <details className="more"><summary>{d.direction === "payable" ? "Catat pembayaran" : "Catat penerimaan"}</summary><form action={pay} className="row"><input type="hidden" name="did" value={d.id} />
-          <input name="amt" type="number" step="0.01" max={rem} placeholder="Nominal" required /><input name="d" type="date" defaultValue={today} required />
+          <MoneyInput name="amt" maxLength={15} placeholder="Nominal (Rp)" required /><input name="d" type="date" defaultValue={today} required />
           <select name="wid">{ws?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select><select name="cid">{cc.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="sm">{d.direction === "payable" ? "Bayar" : "Terima"}</button></form></details>}
         {canWrite(role) && <details className="more"><summary>Edit data</summary>
           <form action={update} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 10, paddingTop: 12 }}>
@@ -75,7 +96,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
               <input name="counterparty" defaultValue={d.counterparty} maxLength={80} required />
             </label>
             <label style={{ display: "grid", gap: 5 }}>Pokok (Rp)
-              <input name="principal" type="number" min={mine.reduce((sum, p) => sum + Number(p.amount), 0)} step="0.01" defaultValue={d.principal} required />
+              <MoneyInput name="principal" min={mine.reduce((sum, p) => sum + Number(p.amount), 0)} defaultValue={d.principal} required />
             </label>
             <label style={{ display: "grid", gap: 5 }}>Jatuh tempo
               <input name="due_date" type="date" defaultValue={d.due_date ?? ""} />
