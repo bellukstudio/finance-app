@@ -15,6 +15,23 @@ async function create(fd: FormData) {
   const { error } = await sb.from("debts").insert({ ...p.data, due_date: p.data.due_date || null, family_id: familyId, created_by: user.id });
   revalidatePath("/utang"); back("/utang", pgMessage(error));
 }
+async function update(fd: FormData) {
+  "use server";
+  const { sb, role, familyId } = await getCtx();
+  if (!canWrite(role)) return back("/utang", "Viewer tidak dapat mengubah data.");
+  const p = z.object({ id: z.string().uuid(), direction: z.enum(["payable","receivable"]), counterparty: z.string().trim().min(1).max(80), principal: z.coerce.number().positive(), due_date: z.string().date().optional().or(z.literal("")), notes: z.string().trim().max(300).optional() }).safeParse(Object.fromEntries(fd));
+  if (!p.success) return back("/utang", "Periksa kembali data utang/piutang.");
+  const { data: debt } = await sb.from("debts").select("id,direction").eq("id", p.data.id).eq("family_id", familyId).is("deleted_at", null).maybeSingle();
+  if (!debt) return back("/utang", "Data tidak ditemukan.");
+  const { data: payments } = await sb.from("debt_payments").select("amount").eq("debt_id", p.data.id).eq("family_id", familyId).is("deleted_at", null);
+  const paidTotal = (payments ?? []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+  if (p.data.principal < paidTotal) return back("/utang", "Pokok tidak boleh lebih kecil dari total pembayaran yang sudah tercatat.");
+  if (debt.direction !== p.data.direction && paidTotal > 0) return back("/utang", "Jenis transaksi tidak dapat diubah karena sudah memiliki riwayat pembayaran.");
+  const { id, ...values } = p.data;
+  const { error } = await sb.from("debts").update({ ...values, due_date: values.due_date || null, notes: values.notes || null }).eq("id", id).eq("family_id", familyId);
+  revalidatePath("/utang");
+  back("/utang", pgMessage(error));
+}
 async function pay(fd: FormData) {
   "use server";
   const { sb, role } = await getCtx();
@@ -40,12 +57,36 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     {!ds?.length ? <p className="muted">Belum ada data.</p> : <div className="cards">{ds.map(d => { const mine = ps?.filter(p => p.debt_id === d.id) ?? []; const pr = Number(d.principal); const rem = remaining(pr, mine.map(p => Number(p.amount))); const st = debtStatus(rem, d.due_date, today);
       const cc = cats?.filter(c => c.type === (d.direction === "payable" ? "expense" : "income")) ?? []; const paid = pr > 0 ? Math.min(100, ((pr - rem) / pr) * 100) : 0;
       return <article key={d.id} className="card"><div className="between"><b>{d.counterparty}</b><span className="pill">{DEBT_LABEL[st]}</span></div>
-        <small>{d.direction === "payable" ? "Utang saya" : "Piutang saya"} · jatuh tempo {d.due_date ? tanggal(d.due_date) : "-"}</small>
+        <small>{d.direction === "payable" ? "Utang saya" : "Piutang saya"} · jatuh tempo {d.due_date ? tanggal(d.due_date) : "Belum ditentukan"}</small>\n        {d.notes && <p className="muted" style={{ margin: "8px 0" }}>{d.notes}</p>}
         <div className="big2">{rupiah(rem)}</div>
         <div className="bar"><i style={{ width: `${paid}%` }} /></div><small>Sisa dari pokok {rupiah(pr)}</small>
         {rem > 0 && canWrite(role) && <details className="more"><summary>{d.direction === "payable" ? "Catat pembayaran" : "Catat penerimaan"}</summary><form action={pay} className="row"><input type="hidden" name="did" value={d.id} />
           <input name="amt" type="number" step="0.01" max={rem} placeholder="Nominal" required /><input name="d" type="date" defaultValue={today} required />
           <select name="wid">{ws?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select><select name="cid">{cc.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="sm">{d.direction === "payable" ? "Bayar" : "Terima"}</button></form></details>}
+        {canWrite(role) && <details className="more"><summary>Edit data</summary>
+          <form action={update} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 10, paddingTop: 12 }}>
+            <input type="hidden" name="id" value={d.id} />
+            <label style={{ display: "grid", gap: 5 }}>Jenis
+              <select name="direction" defaultValue={d.direction} disabled={mine.length > 0}>
+                <option value="payable">Utang — saya berutang</option><option value="receivable">Piutang — orang berutang</option>
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 5 }}>Pihak terkait
+              <input name="counterparty" defaultValue={d.counterparty} maxLength={80} required />
+            </label>
+            <label style={{ display: "grid", gap: 5 }}>Pokok (Rp)
+              <input name="principal" type="number" min={mine.reduce((sum, p) => sum + Number(p.amount), 0)} step="0.01" defaultValue={d.principal} required />
+            </label>
+            <label style={{ display: "grid", gap: 5 }}>Jatuh tempo
+              <input name="due_date" type="date" defaultValue={d.due_date ?? ""} />
+            </label>
+            <label style={{ display: "grid", gap: 5, gridColumn: "1 / -1" }}>Catatan
+              <textarea name="notes" rows={2} maxLength={300} defaultValue={d.notes ?? ""} />
+            </label>
+            {mine.length > 0 && <small className="muted" style={{ gridColumn: "1 / -1" }}>Jenis transaksi dikunci karena sudah ada riwayat pembayaran.</small>}
+            <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}><button className="sm" type="submit">Simpan perubahan</button></div>
+          </form>
+        </details>}
         <details className="more"><summary>Riwayat ({mine.length})</summary><ul className="list">{mine.map((p, i) => <li key={i}><span>{tanggal(p.paid_on)}</span><b>{rupiah(Number(p.amount))}</b></li>)}</ul></details></article>; })}</div>}
   </main>);
 }
