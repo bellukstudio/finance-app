@@ -14,7 +14,7 @@ async function create(fd: FormData) {
   if (!canWrite(role)) return back("/utang", "Viewer tidak dapat mengubah data.");
   const p = D.safeParse(Object.fromEntries(fd)); if (!p.success) return back("/utang", "Input tidak valid.");
   const { error } = await sb.from("debts").insert({ ...p.data, due_date: p.data.due_date || null, family_id: familyId, created_by: user.id });
-  revalidatePath("/utang"); if (error) if (error) back("/utang", pgMessage(error)); backSuccess("/utang", "Data utang/piutang berhasil diperbarui."); backSuccess("/utang", "Data utang/piutang berhasil disimpan.");
+  revalidatePath("/utang"); if (error) back("/utang", pgMessage(error)); backSuccess("/utang", "Data utang/piutang berhasil disimpan.");
 }
 async function update(fd: FormData) {
   "use server";
@@ -31,7 +31,8 @@ async function update(fd: FormData) {
   const { id, ...values } = p.data;
   const { error } = await sb.from("debts").update({ ...values, due_date: values.due_date || null, notes: values.notes || null }).eq("id", id).eq("family_id", familyId);
   revalidatePath("/utang");
-  back("/utang", pgMessage(error));
+  if (error) back("/utang", pgMessage(error));
+  backSuccess("/utang", "Data utang/piutang berhasil diperbarui.");
 }
 async function pay(fd: FormData) {
   "use server";
