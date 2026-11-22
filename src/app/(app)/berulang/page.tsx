@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCtx, canWrite, canManage, back } from "@/lib/context";
+import { getCtx, canWrite, canManage, back, backSuccess } from "@/lib/context";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { pgMessage } from "@/lib/errors";
 import { rateLimit } from "@/lib/rate-limit";
@@ -20,14 +20,14 @@ async function create(fd: FormData) {
   const { data: c } = await sb.from("categories").select("type").eq("id", p.data.category_id).eq("family_id", familyId).single();
   if (c?.type !== p.data.type) return back("/berulang", "Kategori tidak sesuai dengan jenis transaksi.");
   const { error } = await sb.from("recurring_transactions").insert({ ...p.data, end_date: p.data.end_date || null, family_id: familyId, created_by: user.id });
-  revalidatePath("/berulang"); back("/berulang", pgMessage(error));
+  revalidatePath("/berulang"); if (error) back("/berulang", pgMessage(error)); backSuccess("/berulang", "Transaksi berulang berhasil ditambahkan.");
 }
 async function toggle(fd: FormData) {
   "use server";
   const { sb, user, role, familyId } = await getCtx();
   if (!canWrite(role)) return back("/berulang", "Tidak ada izin.");
   const { error } = await sb.from("recurring_transactions").update({ is_active: fd.get("active") !== "true", updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
-  revalidatePath("/berulang"); back("/berulang", pgMessage(error));
+  revalidatePath("/berulang"); if (error) back("/berulang", pgMessage(error)); backSuccess("/berulang", "Status transaksi berulang diperbarui.");
 }
 async function runNow() {
   "use server";
