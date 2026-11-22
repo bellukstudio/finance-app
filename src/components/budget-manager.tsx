@@ -8,6 +8,7 @@ import { TxRow, type TxRowData } from "./tx-row";
 import { ConfirmDialog } from "./confirm-dialog";
 import { Icon } from "./icons";
 import { MultiPick, type PickOpt } from "./multi-pick";
+import { showToast } from "@/lib/toast";
 
 export type BudgetView = { id: string; name: string; amount: number; used: number; topup: number; start: string; end: string; month: number; year: number; wallet_ids: string[]; category_ids: string[]; tx_ids: string[] };
 export type BudgetTx = TxRowData & { budget_id: string | null };
@@ -21,7 +22,7 @@ function BudgetModal({ initial, wallets, cats, today, onClose }: { initial: Budg
   useEffect(() => { const h = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [onClose]);
   function submit(e: React.FormEvent) {
     e.preventDefault(); setErr(null);
-    start(async () => { const r = await saveBudget({ id: initial?.id, name, month, year: Number(year), amount: Number(amount), wallet_ids: ws, category_ids: cs }); if (r.ok) onClose(); else setErr(r.error); });
+    start(async () => { const r = await saveBudget({ id: initial?.id, name, month, year: Number(year), amount: Number(amount), wallet_ids: ws, category_ids: cs }); if (r.ok) { showToast(initial ? "Budget berhasil diperbarui." : "Budget berhasil disimpan."); onClose(); } else setErr(r.error); });
   }
   return (
     <div className="mb" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
