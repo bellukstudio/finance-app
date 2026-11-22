@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { saveTx } from "@/app/(app)/actions";
 import { Icon } from "./icons";
+import { showToast } from "@/lib/toast";
 import { ReceiptModal } from "./receipt-modal";
 import { compressReceiptFile, formatBytes, type CompressionResult } from "@/lib/client-compress";
 
@@ -65,6 +66,7 @@ export function TxModal({ wallets, cats, budgets, initialAmount, onClose }: { wa
       const base = { date, amount: Number(amount), wallet_id: wallet, note, budget_id: budget || null, idem };
       const r = await saveTx(kind === "transfer" ? { ...base, type: "transfer", to_wallet_id: to } : { ...base, type: kind, category_id: cat });
       if (!r.ok) return setErr(r.error);
+      showToast("Transaksi berhasil disimpan.");
       if (!file || !r.id) return onClose();
       try {
         const fd = new FormData(); fd.set("transaction_id", r.id); fd.set("file", file);
