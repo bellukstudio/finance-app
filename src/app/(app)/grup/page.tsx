@@ -20,7 +20,7 @@ async function create(fd: FormData) {
   const gid = await latestGroupId();  // query ulang: grup baru langsung terbuka
   if (gid) await setLedgerCookie(gid);
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/dashboard?toast=" + encodeURIComponent("Grup berhasil dibuat."));
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
