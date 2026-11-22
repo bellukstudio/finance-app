@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateTx } from "@/app/(app)/actions";
 import { Icon } from "./icons";
+import { showToast } from "@/lib/toast";
 
 type Opt = { id: string; name: string };
 export type EditCat = Opt & { type: string };
@@ -41,6 +42,7 @@ function EditModal({ tx, wallets, cats, budgets, onClose }: { tx: EditTx; wallet
     start(async () => {
       const r = await updateTx({ id: tx.id, date, amount: Number(amount), wallet_id: wallet, to_wallet_id: isTransfer ? to : null, category_id: isTransfer ? null : cat, note, budget_id: kind === "income" ? null : budget || null });
       if (!r.ok) return setErr(r.error);
+      showToast("Transaksi berhasil diperbarui.");
       onClose(); router.refresh();
     });
   }
