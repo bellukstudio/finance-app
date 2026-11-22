@@ -82,7 +82,7 @@ export function BudgetManager({ budgets, transactions, walletNames, catNames, wa
   const wn = new Map(walletNames.map((w) => [w.id, w.name])), cn = new Map(catNames.map((c) => [c.id, c.name]));
   const txMap = new Map(transactions.map((t) => [t.id, t]));
   const [toDel, setToDel] = useState<BudgetView | null>(null);
-  const del = async (b: BudgetView) => { const r = await removeBudget(b.id); setToDel(null); if (!r.ok) setErr(r.error); };
+  const del = async (b: BudgetView) => { const r = await removeBudget(b.id); setToDel(null); if (!r.ok) setErr(r.error); else showToast("Budget berhasil dihapus."); };
   return (
     <main>
       <div className="ph"><div><h1>Budget</h1><small>Monitor pengeluaran</small></div>
