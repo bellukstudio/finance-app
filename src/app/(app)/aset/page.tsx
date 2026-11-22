@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCtx, canWrite, canManage, back } from "@/lib/context";
+import { getCtx, canWrite, canManage, back, backSuccess } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { rupiah, tanggal } from "@/lib/format";
 import { todayJakarta } from "@/lib/period";
@@ -16,7 +16,7 @@ async function create(fd: FormData) {
   const p = A.safeParse(Object.fromEntries(fd)); if (!p.success) return back("/aset", "Input tidak valid.");
   const v = p.data;
   const { error } = await sb.rpc("create_asset", { fid: familyId, nm: v.name, k: v.kind, acq: v.acq, cur: v.cur, bought: v.bought || null, nt: v.nt ?? null });
-  revalidatePath("/aset"); back("/aset", pgMessage(error));
+  revalidatePath("/aset"); if (error) back("/aset", pgMessage(error)); backSuccess("/aset", "Aset berhasil ditambahkan.");
 }
 async function revalue(fd: FormData) {
   "use server";
@@ -25,14 +25,14 @@ async function revalue(fd: FormData) {
   const p = z.object({ id: z.string().uuid(), val: z.coerce.number().min(0), d: z.string().date() }).safeParse(Object.fromEntries(fd));
   if (!p.success) return back("/aset", "Input tidak valid.");
   const { error } = await sb.rpc("update_asset_value", { aid: p.data.id, val: p.data.val, d: p.data.d });
-  revalidatePath("/aset"); back("/aset", pgMessage(error));
+  revalidatePath("/aset"); if (error) back("/aset", pgMessage(error)); backSuccess("/aset", "Nilai aset berhasil diperbarui.");
 }
 async function remove(fd: FormData) {
   "use server";
   const { sb, user, role, familyId } = await getCtx();
   if (!canManage(role)) return back("/aset", "Hanya Owner/Admin.");
   const { error } = await sb.from("assets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
-  revalidatePath("/aset"); back("/aset", pgMessage(error));
+  revalidatePath("/aset"); if (error) back("/aset", pgMessage(error)); backSuccess("/aset", "Aset berhasil dihapus.");
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
