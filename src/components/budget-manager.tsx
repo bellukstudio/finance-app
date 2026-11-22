@@ -8,6 +8,7 @@ import { TxRow, type TxRowData } from "./tx-row";
 import { ConfirmDialog } from "./confirm-dialog";
 import { Icon } from "./icons";
 import { MultiPick, type PickOpt } from "./multi-pick";
+import { showToast } from "@/lib/toast";
 
 export type BudgetView = { id: string; name: string; amount: number; used: number; topup: number; start: string; end: string; month: number; year: number; wallet_ids: string[]; category_ids: string[]; tx_ids: string[] };
 export type BudgetTx = TxRowData & { budget_id: string | null };
@@ -21,7 +22,7 @@ function BudgetModal({ initial, wallets, cats, today, onClose }: { initial: Budg
   useEffect(() => { const h = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [onClose]);
   function submit(e: React.FormEvent) {
     e.preventDefault(); setErr(null);
-    start(async () => { const r = await saveBudget({ id: initial?.id, name, month, year: Number(year), amount: Number(amount), wallet_ids: ws, category_ids: cs }); if (r.ok) onClose(); else setErr(r.error); });
+    start(async () => { const r = await saveBudget({ id: initial?.id, name, month, year: Number(year), amount: Number(amount), wallet_ids: ws, category_ids: cs }); if (r.ok) { showToast(initial ? "Budget berhasil diperbarui." : "Budget berhasil disimpan."); onClose(); } else setErr(r.error); });
   }
   return (
     <div className="mb" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -81,7 +82,7 @@ export function BudgetManager({ budgets, transactions, walletNames, catNames, wa
   const wn = new Map(walletNames.map((w) => [w.id, w.name])), cn = new Map(catNames.map((c) => [c.id, c.name]));
   const txMap = new Map(transactions.map((t) => [t.id, t]));
   const [toDel, setToDel] = useState<BudgetView | null>(null);
-  const del = async (b: BudgetView) => { const r = await removeBudget(b.id); setToDel(null); if (!r.ok) setErr(r.error); };
+  const del = async (b: BudgetView) => { const r = await removeBudget(b.id); setToDel(null); if (!r.ok) setErr(r.error); else showToast("Budget berhasil dihapus."); };
   return (
     <main>
       <div className="ph"><div><h1>Budget</h1><small>Monitor pengeluaran</small></div>

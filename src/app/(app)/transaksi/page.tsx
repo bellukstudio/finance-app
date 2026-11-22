@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import Form from "next/form";
 import Link from "next/link";
-import { getCtx, canWrite, canManage, back } from "@/lib/context";
+import { getCtx, canWrite, canManage, back, backSuccess } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { rupiah } from "@/lib/format";
 import { Icon } from "@/components/icons";
@@ -17,7 +17,7 @@ async function del(fd: FormData) {
   if (!canWrite(role)) return back("/transaksi", "Viewer tidak dapat mengubah data.");
   const tid = fd.get("id"); if (!isUuid(tid)) return back("/transaksi", "Input tidak valid.");
   const { error } = await sb.from("transactions").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", tid).eq("family_id", familyId);
-  revalidatePath("/", "layout"); back("/transaksi", pgMessage(error));
+  revalidatePath("/", "layout"); if (error) back("/transaksi", pgMessage(error)); backSuccess("/transaksi", "Transaksi berhasil dihapus.");
 }
 async function dup(fd: FormData) {
   "use server";
@@ -27,7 +27,7 @@ async function dup(fd: FormData) {
   const { data: t } = await sb.from("transactions").select("type,amount,wallet_id,category_id,description,note,budget_id").eq("id", did).eq("family_id", familyId).single();
   if (!t || t.type === "transfer") return back("/transaksi", "Transfer tidak dapat diduplikasi dari sini.");
   const { error } = await sb.from("transactions").insert({ ...t, date: new Date().toISOString().slice(0, 10), family_id: familyId, created_by: user.id });
-  revalidatePath("/", "layout"); back("/transaksi", pgMessage(error));
+  revalidatePath("/", "layout"); if (error) back("/transaksi", pgMessage(error)); backSuccess("/transaksi", "Transaksi berhasil diduplikasi.");
 }
 
 type SP = { e?: string; q?: string; wallet?: string; type?: string; from?: string; to?: string; page?: string };

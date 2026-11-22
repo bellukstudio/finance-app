@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { getCtx, canManage, back } from "@/lib/context";
+import { getCtx, canManage, back, backSuccess } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { rateLimit } from "@/lib/rate-limit";
 import { tanggal } from "@/lib/format";
@@ -23,7 +23,7 @@ async function invite(fd: FormData) {
   const link = `${await getOrigin()}/undangan/${data}`;
   // Token undangan TIDAK dikirim lewat query string (masuk riwayat browser/log/Referer); pakai cookie httpOnly berumur 2 menit.
   (await cookies()).set(FLASH, link, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/anggota", maxAge: 120 });
-  revalidatePath("/anggota"); return back("/anggota");
+  revalidatePath("/anggota"); return backSuccess("/anggota", "Link undangan berhasil dibuat.");
 }
 async function changeRole(fd: FormData) {
   "use server";
@@ -32,7 +32,7 @@ async function changeRole(fd: FormData) {
   if (role !== "owner") return back("/anggota", "Hanya Owner yang dapat mengubah role.");
   const p = z.object({ uid: z.string().uuid(), r: z.enum(ROLES) }).safeParse(Object.fromEntries(fd)); if (!p.success) return back("/anggota", "Input tidak valid.");
   const { error } = await sb.rpc("change_member_role", { fid: familyId, uid: p.data.uid, r: p.data.r });
-  revalidatePath("/anggota"); back("/anggota", pgMessage(error));
+  revalidatePath("/anggota"); if (error) back("/anggota", pgMessage(error)); backSuccess("/anggota", "Role anggota berhasil diperbarui.");
 }
 async function removeMember(fd: FormData) {
   "use server";
@@ -41,14 +41,14 @@ async function removeMember(fd: FormData) {
   if (!canManage(role)) return back("/anggota", "Hanya Owner/Admin.");
   const uid = UID.safeParse(fd.get("uid")); if (!uid.success) return back("/anggota", "Input tidak valid.");
   const { error } = await sb.rpc("remove_member", { fid: familyId, uid: uid.data });
-  revalidatePath("/anggota"); back("/anggota", pgMessage(error));
+  revalidatePath("/anggota"); if (error) back("/anggota", pgMessage(error)); backSuccess("/anggota", "Anggota berhasil dikeluarkan.");
 }
 async function revoke(fd: FormData) {
   "use server";
   const { sb, role, familyId } = await getCtx(); if (!canManage(role)) return back("/anggota", "Hanya Owner/Admin.");
   const rid = UID.safeParse(fd.get("id")); if (!rid.success) return back("/anggota", "Input tidak valid.");
   const { error } = await sb.from("family_invitations").update({ status: "revoked" }).eq("id", rid.data).eq("family_id", familyId);
-  revalidatePath("/anggota"); back("/anggota", pgMessage(error));
+  revalidatePath("/anggota"); if (error) back("/anggota", pgMessage(error)); backSuccess("/anggota", "Undangan berhasil dicabut.");
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {

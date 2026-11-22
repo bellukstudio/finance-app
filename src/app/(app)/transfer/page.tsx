@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCtx, canWrite, back } from "@/lib/context";
+import { getCtx, canWrite, back, backSuccess } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { rupiah, tanggal } from "@/lib/format";
 import { SubmitButton } from "@/components/submit-button";
@@ -21,7 +21,7 @@ async function submit(fd: FormData) {
   const v = p.data;
   const { error } = await sb.rpc("create_transfer", { fid: familyId, src: v.src, dst: v.dst, amt: v.amt, d: v.d, fee: v.fee, fee_cat: v.fee_cat || null, nt: v.nt ?? null, idem: v.idem, bid: v.bid || null });
   revalidatePath("/", "layout");
-  back("/transfer", error ? (error.code === "23505" ? "Transfer ini sudah tercatat." : pgMessage(error)) : "Transfer berhasil dicatat.");
+  if (error) back("/transfer", error.code === "23505" ? "Transfer ini sudah tercatat." : pgMessage(error)); backSuccess("/transfer", "Transfer berhasil dicatat.");
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {

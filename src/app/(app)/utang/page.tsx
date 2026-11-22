@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCtx, canWrite, back } from "@/lib/context";
+import { getCtx, canWrite, back, backSuccess } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { rupiah, tanggal } from "@/lib/format";
 import { todayJakarta } from "@/lib/period";
@@ -14,7 +14,7 @@ async function create(fd: FormData) {
   if (!canWrite(role)) return back("/utang", "Viewer tidak dapat mengubah data.");
   const p = D.safeParse(Object.fromEntries(fd)); if (!p.success) return back("/utang", "Input tidak valid.");
   const { error } = await sb.from("debts").insert({ ...p.data, due_date: p.data.due_date || null, family_id: familyId, created_by: user.id });
-  revalidatePath("/utang"); back("/utang", pgMessage(error));
+  revalidatePath("/utang"); if (error) back("/utang", pgMessage(error)); backSuccess("/utang", "Data utang/piutang berhasil disimpan.");
 }
 async function update(fd: FormData) {
   "use server";
@@ -31,7 +31,8 @@ async function update(fd: FormData) {
   const { id, ...values } = p.data;
   const { error } = await sb.from("debts").update({ ...values, due_date: values.due_date || null, notes: values.notes || null }).eq("id", id).eq("family_id", familyId);
   revalidatePath("/utang");
-  back("/utang", pgMessage(error));
+  if (error) back("/utang", pgMessage(error));
+  backSuccess("/utang", "Data utang/piutang berhasil diperbarui.");
 }
 async function pay(fd: FormData) {
   "use server";
@@ -40,7 +41,7 @@ async function pay(fd: FormData) {
   const p = z.object({ did: z.string().uuid(), amt: z.coerce.number().positive(), d: z.string().date(), wid: z.string().uuid(), cid: z.string().uuid() }).safeParse(Object.fromEntries(fd));
   if (!p.success) return back("/utang", "Input pembayaran tidak valid.");
   const { error } = await sb.rpc("pay_debt", p.data);
-  revalidatePath("/utang"); back("/utang", pgMessage(error));
+  revalidatePath("/utang"); if (error) back("/utang", pgMessage(error)); backSuccess("/utang", "Pembayaran berhasil dicatat.");
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {

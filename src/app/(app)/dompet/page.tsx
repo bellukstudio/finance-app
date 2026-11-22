@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCtx, canManage, back } from "@/lib/context";
+import { getCtx, canManage, back, backSuccess } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { rupiah } from "@/lib/format";
 import { MoneyInput } from "@/components/money-input";
@@ -16,21 +16,21 @@ async function create(fd: FormData) {
   const p = W.safeParse(Object.fromEntries(fd));
   if (!p.success) return back("/dompet", "Input tidak valid.");
   const { error } = await sb.from("wallets").insert({ ...p.data, family_id: familyId, created_by: user.id });
-  revalidatePath("/dompet"); back("/dompet", pgMessage(error));
+  revalidatePath("/dompet"); if (error) back("/dompet", pgMessage(error)); backSuccess("/dompet", "Dompet berhasil ditambahkan.");
 }
 async function toggle(fd: FormData) {
   "use server";
   const { sb, user, role, familyId } = await getCtx();
   if (!canManage(role)) return back("/dompet", "Tidak ada izin.");
   const { error } = await sb.from("wallets").update({ is_active: fd.get("active") !== "true", updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
-  revalidatePath("/dompet"); back("/dompet", pgMessage(error));
+  revalidatePath("/dompet"); if (error) back("/dompet", pgMessage(error)); backSuccess("/dompet", "Status dompet berhasil diperbarui.");
 }
 async function remove(fd: FormData) {
   "use server";
   const { sb, user, role, familyId } = await getCtx();
   if (!canManage(role)) return back("/dompet", "Tidak ada izin.");
   const { error } = await sb.from("wallets").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", String(fd.get("id"))).eq("family_id", familyId);
-  revalidatePath("/dompet"); back("/dompet", pgMessage(error));
+  revalidatePath("/dompet"); if (error) back("/dompet", pgMessage(error)); backSuccess("/dompet", "Dompet berhasil dihapus.");
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {

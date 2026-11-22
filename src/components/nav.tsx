@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Icon, type IconName } from "./icons";
 import { ConfirmDialog } from "./confirm-dialog";
 import type { LedgerOpt } from "@/lib/context";
 import { TxModal, type BudgetOpt, type CatOpt, type Opt } from "./tx-modal";
 import { CalculatorNavShortcut } from "./calculator-nav-shortcut";
+import { ToastHost } from "./toast-host";
 
 type Ledger = "family" | "personal";
 
@@ -134,6 +135,7 @@ export function AppNav({ unread, signOut, wallets, cats, budgets, ledger, ledger
           </div>
         </div>
       )}
+      <Suspense fallback={null}><ToastHost /></Suspense>
       {ask && <ConfirmDialog title={ask.title} message={ask.message} confirmLabel={ask.label ?? "Ya, lanjutkan"} tone={ask.tone} onCancel={() => setAsk(null)} onConfirm={() => { const b = ask.btn; setAsk(null); b.form?.requestSubmit(b); }} />}
       {tx && <TxModal wallets={wallets} cats={cats} budgets={budgets} initialAmount={txAmt} onClose={() => { setTx(false); setTxAmt(""); }} />}
     </div>

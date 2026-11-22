@@ -93,4 +93,6 @@ export async function getCtx() {
 export const canManage = (r: string) => r === "owner" || r === "admin";
 export const canWrite = (r: string) => r !== "viewer";
 export const back = (path: string, msg?: string | null): never =>
-  redirect(msg ? `${path}?e=${encodeURIComponent(msg)}` : path);
+  redirect(msg ? `${path}?e=${encodeURIComponent(msg)}` : `${path}${path.includes("?") ? "&" : "?"}toast=${encodeURIComponent("Perubahan berhasil disimpan.")}`);
+export const backSuccess = (path: string, msg = "Perubahan berhasil disimpan."): never =>
+  redirect(`${path}${path.includes("?") ? "&" : "?"}toast=${encodeURIComponent(msg)}`);
