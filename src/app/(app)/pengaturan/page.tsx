@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getCtx, back } from "@/lib/context";
+import { getCtx, back, backSuccess } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 async function rename(fd: FormData) {
   "use server";
@@ -9,7 +9,7 @@ async function rename(fd: FormData) {
   if (role !== "owner") return back("/pengaturan", "Hanya Owner.");
   const p = z.string().trim().min(2).max(80).safeParse(fd.get("name")); if (!p.success) return back("/pengaturan", "Nama tidak valid.");
   const { error } = await sb.from("families").update({ name: p.data }).eq("id", familyId);
-  revalidatePath("/pengaturan"); back("/pengaturan", error ? pgMessage(error) : "Tersimpan.");
+  revalidatePath("/pengaturan"); if (error) back("/pengaturan", pgMessage(error)); backSuccess("/pengaturan", "Nama grup berhasil diperbarui.");
 }
 async function signOutAll() { "use server"; const { sb } = await getCtx(); await sb.auth.signOut({ scope: "global" }); redirect("/login?out=1"); }
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
