@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCtx, canManage, back } from "@/lib/context";
+import { getCtx, canManage, back, backSuccess } from "@/lib/context";
 import { pgMessage } from "@/lib/errors";
 import { DataTable, type DTRow } from "@/components/data-table";
 
@@ -14,7 +14,7 @@ async function create(fd: FormData) {
   if (!p.success) return back("/kategori", "Input tidak valid.");
   const { parent_id, ...rest } = p.data;
   const { error } = await sb.from("categories").insert({ ...rest, parent_id: parent_id || null, family_id: familyId, created_by: user.id });
-  revalidatePath("/kategori"); back("/kategori", pgMessage(error));
+  revalidatePath("/kategori"); if (error) back("/kategori", pgMessage(error)); backSuccess("/kategori", "Kategori berhasil ditambahkan.");
 }
 // Hapus permanen hanya jika belum dipakai; jika dipakai, diarsipkan (nonaktif).
 async function remove(fd: FormData) {
@@ -28,7 +28,7 @@ async function remove(fd: FormData) {
     const r = await sb.from("categories").update({ is_active: false, deleted_at: new Date().toISOString(), updated_by: user.id }).eq("id", id).eq("family_id", familyId);
     msg = r.error ? pgMessage(r.error) : "Kategori sudah dipakai transaksi, jadi diarsipkan (tidak dihapus permanen).";
   } else msg = pgMessage(error);
-  revalidatePath("/kategori"); back("/kategori", msg);
+  revalidatePath("/kategori"); if (msg && !msg.startsWith("Kategori sudah dipakai")) back("/kategori", msg); backSuccess("/kategori", msg || "Kategori berhasil dihapus.");
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
